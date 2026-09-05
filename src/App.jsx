@@ -15,6 +15,7 @@ import { AdminDashboard } from './pages/AdminDashboard';
 
 import { getRequirements } from './data/requirementsData';
 import { getStoredApplications, saveStoredApplications } from './data/initialApplications';
+import { approvalApi } from './services/api';
 
 export default function App() {
   // Navigation & Role State
@@ -26,6 +27,18 @@ export default function App() {
   const [selectedState, setSelectedState] = useState('Maharashtra');
   const [selectedDistrict, setSelectedDistrict] = useState('Pune');
   const [selectedIndustry, setSelectedIndustry] = useState('Manufacturing');
+
+  // Business Operational Profile for Conditional Rules & Eligibility Engine
+  const [businessProfile, setBusinessProfile] = useState({
+    entityType: 'Private Limited Company',
+    investment: 2.5,
+    turnover: 12.0,
+    employeeCount: 25,
+    powerRequired: 75,
+    builtUpArea: 1500,
+    usesHazardousChemicals: false,
+    isExportOriented: false
+  });
 
   // Page 2 State: When user submits the form, requirementsResult is generated
   const [requirementsResult, setRequirementsResult] = useState(null);
@@ -51,9 +64,28 @@ export default function App() {
     setTimeout(() => setToastMessage(''), 4000);
   };
 
-  // Form submission handler -> Triggers Page 2 results
-  const handleFindApprovals = () => {
-    const results = getRequirements(selectedState, selectedDistrict, selectedIndustry);
+  // Form submission handler -> Triggers Page 2 results with API and client engine fallback
+  const handleFindApprovals = async () => {
+    let results = null;
+
+    try {
+      const res = await approvalApi.evaluate({
+        state: selectedState,
+        district: selectedDistrict,
+        industry: selectedIndustry,
+        ...businessProfile
+      }, applications);
+      if (res && res.success && res.data) {
+        results = res.data;
+      }
+    } catch {
+      // Backend offline or error -> run client-side rule engine seamlessly
+    }
+
+    if (!results) {
+      results = getRequirements(selectedState, selectedDistrict, selectedIndustry, businessProfile, applications);
+    }
+
     setRequirementsResult(results);
     setViewingPage2(true);
     // Smooth scroll to top of requirements
@@ -66,7 +98,17 @@ export default function App() {
     setSelectedState(state);
     setSelectedDistrict(district);
     setSelectedIndustry(industry);
-    const results = getRequirements(state, district, industry);
+
+    const updatedProfile = {
+      ...businessProfile,
+      employeeCount: industry === 'Information Technology' ? 15 : (industry === 'Chemical Industry' ? 30 : 25),
+      powerRequired: industry === 'Information Technology' ? 15 : (industry === 'Chemical Industry' ? 100 : 75),
+      builtUpArea: industry === 'Information Technology' ? 400 : (industry === 'Chemical Industry' ? 2500 : 1500),
+      usesHazardousChemicals: industry === 'Chemical Industry'
+    };
+    setBusinessProfile(updatedProfile);
+
+    const results = getRequirements(state, district, industry, updatedProfile, applications);
     setRequirementsResult(results);
     setViewingPage2(true);
     setCurrentTab('home');
@@ -199,6 +241,8 @@ export default function App() {
                   setSelectedDistrict={setSelectedDistrict}
                   selectedIndustry={selectedIndustry}
                   setSelectedIndustry={setSelectedIndustry}
+                  businessProfile={businessProfile}
+                  setBusinessProfile={setBusinessProfile}
                   onSubmit={handleFindApprovals}
                 />
               </div>
@@ -208,6 +252,7 @@ export default function App() {
                 requirements={requirementsResult}
                 onBack={handleBackToForm}
                 onApplyForApproval={handleApplyForApprovalFromPage2}
+                userApplications={applications}
                 onNavigateToSchemes={() => setCurrentTab('schemes')}
               />
             )}
@@ -233,6 +278,8 @@ export default function App() {
                 setSelectedDistrict={setSelectedDistrict}
                 selectedIndustry={selectedIndustry}
                 setSelectedIndustry={setSelectedIndustry}
+                businessProfile={businessProfile}
+                setBusinessProfile={setBusinessProfile}
                 onSubmit={handleFindApprovals}
               />
             ) : (
@@ -240,6 +287,7 @@ export default function App() {
                 requirements={requirementsResult}
                 onBack={handleBackToForm}
                 onApplyForApproval={handleApplyForApprovalFromPage2}
+                userApplications={applications}
                 onNavigateToSchemes={() => setCurrentTab('schemes')}
               />
             )}

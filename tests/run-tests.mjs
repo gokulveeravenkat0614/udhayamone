@@ -153,6 +153,53 @@ assert(mh10247.status === "Pending", "MH-10247 status is Pending");
 assert(mh10245.stages.length === 5, "5-stage timeline present on application");
 assert(mh10245.submittedDocs.length >= 3, "Submitted supporting documents attached");
 
+// TEST SUITE 8: STATUTORY ELIGIBILITY & CONDITIONAL RULES ENGINE
+console.log("\n▶ TEST SUITE 8: Statutory Eligibility & Conditional Rules Engine");
+// Scenario: Worker count < 10 with power (conditionally exempt from Factories Act)
+const smallWorkersReqs = getRequirements("Maharashtra", "Pune", "Manufacturing", {
+  employeeCount: 6,
+  powerRequired: 15
+});
+assert(smallWorkersReqs.approvals.some(a => a.name.includes("Shop & Establishment")), "Worker count < 10 routes to Shop & Establishment Registration");
+assert(smallWorkersReqs.exemptApprovals.some(a => a.name.includes("Factory")), "Factories Act marked as Conditionally Exempt for < 10 workers");
+const factoryExemption = smallWorkersReqs.exemptApprovals.find(a => a.name.includes("Factory"));
+assert(factoryExemption.exemptionReason.includes("below the statutory threshold"), "Exemption reason explains 10-worker threshold");
+
+// Scenario: Chemical with Hazardous Materials triggers PESO
+const hazardousReqs = getRequirements("Maharashtra", "Pune", "Manufacturing", {
+  usesHazardousChemicals: true
+});
+assert(hazardousReqs.approvals.some(a => a.name.includes("PESO")), "Hazardous chemicals declaration triggers PESO Explosives License");
+
+// Scenario: MSME Classification
+assert(demoReqs.msmeClassification.category === "Small", "₹2.5 Cr investment / ₹12 Cr turnover is Small Enterprise");
+const microReqs = getRequirements("Maharashtra", "Pune", "Manufacturing", {
+  investment: 0.5,
+  turnover: 2.0
+});
+assert(microReqs.msmeClassification.category === "Micro", "₹0.5 Cr / ₹2 Cr is Micro Enterprise");
+
+// Scenario: Pollution Classification
+assert(demoReqs.pollutionClassification.category === "Orange", "General Manufacturing is Orange Pollution Category");
+assert(itReqs.pollutionClassification.category === "White", "IT Sector is White Pollution Category (Exempt from CTE/CTO)");
+
+// TEST SUITE 9: APPROVAL DEPENDENCY GRAPH & RECOMMENDED JOURNEY
+console.log("\n▶ TEST SUITE 9: Approval Dependency Graph & Recommended Journey");
+assert(demoReqs.dependencyGraph !== undefined, "Dependency Graph generated for requirements");
+assert(demoReqs.dependencyGraph.nodes.length === 5, `Dependency graph has 5 nodes for default demo (${demoReqs.dependencyGraph.nodes.length} found)`);
+assert(demoReqs.dependencyGraph.edges.length > 0, `Dependency graph has directed prerequisite edges (${demoReqs.dependencyGraph.edges.length} edges)`);
+assert(demoReqs.dependencyGraph.phases.length >= 3, `Dependency graph organized in chronological phases (${demoReqs.dependencyGraph.phases.length} phases)`);
+
+// Check prerequisite resolution
+const factoryNode = demoReqs.dependencyGraph.nodes.find(n => n.id === "app-factory");
+assert(factoryNode !== undefined, "Factory License node exists in dependency graph");
+assert(factoryNode.prerequisites.length >= 2, "Factory License has prerequisites (building, fire, pollution, electricity)");
+assert(factoryNode.phase === 4, "Factory License placed in Phase 4 (Pre-Operation)");
+
+const buildingNode = demoReqs.dependencyGraph.nodes.find(n => n.id === "app-building");
+assert(buildingNode !== undefined, "Building approval node exists in dependency graph");
+assert(buildingNode.phase === 2, "Building approval placed in Phase 2 (Pre-Establishment)");
+
 console.log("\n=======================================================");
 console.log(`🏁 TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);
 if (failed === 0) {
@@ -162,3 +209,4 @@ if (failed === 0) {
   process.exit(1);
 }
 console.log("=======================================================\n");
+

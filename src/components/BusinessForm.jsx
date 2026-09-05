@@ -8,10 +8,19 @@ import {
   AlertCircle, 
   CheckCircle2, 
   Filter, 
-  Info
+  Info,
+  Sliders,
+  Users,
+  Zap,
+  Maximize2,
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  Briefcase
 } from 'lucide-react';
 import { STATES_AND_DISTRICTS, POPULAR_PRESETS } from '../data/locations';
 import { INDUSTRIES } from '../data/industries';
+import { calculateMSMEClassification, calculatePollutionCategory } from '../services/ruleEngine';
 
 export const BusinessForm = ({ 
   selectedState, 
@@ -19,11 +28,35 @@ export const BusinessForm = ({
   selectedDistrict, 
   setSelectedDistrict, 
   selectedIndustry, 
-  setSelectedIndustry, 
+  setSelectedIndustry,
+  businessProfile = {
+    entityType: 'Private Limited Company',
+    investment: 2.5,
+    turnover: 12.0,
+    employeeCount: 25,
+    powerRequired: 75,
+    builtUpArea: 1500,
+    usesHazardousChemicals: false,
+    isExportOriented: false
+  },
+  setBusinessProfile,
   onSubmit 
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Local profile fallback if setBusinessProfile is not provided
+  const [localProfile, setLocalProfile] = useState(businessProfile);
+  const activeProfile = businessProfile || localProfile;
+  const updateProfile = (field, val) => {
+    const updated = { ...activeProfile, [field]: val };
+    if (setBusinessProfile) {
+      setBusinessProfile(updated);
+    } else {
+      setLocalProfile(updated);
+    }
+  };
 
   // Derive available districts directly from selected state
   const districtsList = (selectedState && STATES_AND_DISTRICTS[selectedState]) || [];
@@ -49,8 +82,33 @@ export const BusinessForm = ({
   };
 
   const handleIndustryChange = (e) => {
-    setSelectedIndustry(e.target.value);
+    const newIndustry = e.target.value;
+    setSelectedIndustry(newIndustry);
     setErrorMessage('');
+
+    // Apply smart defaults based on selected sector
+    if (newIndustry === 'Information Technology') {
+      updateProfile('employeeCount', 15);
+      updateProfile('powerRequired', 15);
+      updateProfile('builtUpArea', 400);
+      updateProfile('usesHazardousChemicals', false);
+      updateProfile('investment', 0.8);
+      updateProfile('turnover', 5.0);
+    } else if (newIndustry === 'Chemical Industry') {
+      updateProfile('usesHazardousChemicals', true);
+      updateProfile('employeeCount', 30);
+      updateProfile('powerRequired', 100);
+      updateProfile('builtUpArea', 2500);
+      updateProfile('investment', 6.0);
+      updateProfile('turnover', 25.0);
+    } else if (newIndustry === 'Food Processing') {
+      updateProfile('usesHazardousChemicals', false);
+      updateProfile('employeeCount', 20);
+      updateProfile('powerRequired', 45);
+      updateProfile('builtUpArea', 1200);
+      updateProfile('investment', 2.0);
+      updateProfile('turnover', 8.0);
+    }
   };
 
   const handlePresetSelect = (preset) => {
@@ -58,6 +116,22 @@ export const BusinessForm = ({
     setSelectedDistrict(preset.district);
     setSelectedIndustry(preset.industry);
     setErrorMessage('');
+
+    if (preset.industry === 'Information Technology') {
+      updateProfile('employeeCount', 15);
+      updateProfile('powerRequired', 15);
+      updateProfile('builtUpArea', 400);
+      updateProfile('usesHazardousChemicals', false);
+    } else if (preset.industry === 'Chemical Industry') {
+      updateProfile('usesHazardousChemicals', true);
+      updateProfile('employeeCount', 30);
+      updateProfile('powerRequired', 100);
+    } else {
+      updateProfile('employeeCount', 25);
+      updateProfile('powerRequired', 75);
+      updateProfile('builtUpArea', 1500);
+      updateProfile('usesHazardousChemicals', false);
+    }
   };
 
   const handleSubmit = (e) => {
@@ -78,14 +152,15 @@ export const BusinessForm = ({
     setErrorMessage('');
     setIsLoading(true);
 
-    // Provide a crisp professional loading transition
     setTimeout(() => {
       setIsLoading(false);
       onSubmit();
-    }, 450);
+    }, 350);
   };
 
   const currentIndustryMeta = INDUSTRIES.find(i => i.id === selectedIndustry) || INDUSTRIES[0];
+  const msmePreview = calculateMSMEClassification(activeProfile.investment, activeProfile.turnover);
+  const pollutionPreview = calculatePollutionCategory(selectedIndustry, activeProfile);
 
   return (
     <div id="requirements-wizard" className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 -mt-6 sm:-mt-10 relative z-20">
@@ -97,21 +172,21 @@ export const BusinessForm = ({
             <div>
               <div className="inline-flex items-center space-x-2 px-2.5 py-1 rounded-md bg-white/10 text-blue-200 text-xs font-semibold mb-2">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Single-Window Discovery Engine</span>
+                <span>Single-Window Discovery & Conditional Rules Engine</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                Find Your Industry Requirements
+                Find Your Applicable Approvals & Dependencies
               </h2>
               <p className="text-blue-100 text-sm sm:text-base mt-1.5 max-w-2xl font-normal">
-                Tell us about your proposed business and we'll identify the applicable approvals and documents.
+                Submit your proposed location, industry, and business profile to generate applicable clearances, statutory exemptions, and recommended sequence.
               </p>
             </div>
 
             {/* Quick Helper Badge */}
-            <div className="shrink-0 bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/15 hidden md:block text-right">
+            <div className="shrink-0 bg-white/10 backdrop-blur-md rounded-2xl p-3.5 border border-white/15 hidden md:block text-right">
               <div className="text-xs text-blue-200 font-medium">Clearance Pipeline</div>
-              <div className="text-lg font-black text-amber-300">3 Simple Steps</div>
-              <div className="text-[11px] text-blue-200/80">State → District → Sector</div>
+              <div className="text-lg font-black text-amber-300">4 Intelligent Stages</div>
+              <div className="text-[11px] text-blue-200/80">Location → Sector → Rules → Sequence</div>
             </div>
           </div>
 
@@ -153,6 +228,7 @@ export const BusinessForm = ({
             </div>
           )}
 
+          {/* CORE SELECTIONS: 3 Main Selectors */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             {/* STEP 1: Select State */}
@@ -257,10 +333,193 @@ export const BusinessForm = ({
                 </div>
               </div>
               <p className="text-[11px] text-slate-500">
-                Pollution Category: <span className="font-semibold text-slate-700">{currentIndustryMeta.pollutionCategory}</span>
+                Pollution Category: <span className="font-semibold text-slate-700">{pollutionPreview.category}</span>
               </p>
             </div>
 
+          </div>
+
+          {/* Collapsible / Interactive Business Details & Conditional Parameters */}
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center space-x-2">
+                <Sliders className="w-4 h-4 text-brand-700" />
+                <span className="text-xs font-bold text-slate-900">
+                  Business Profile & Operational Parameters (Conditional Rules)
+                </span>
+                <span className="px-2 py-0.5 rounded bg-blue-100 text-brand-800 text-[10px] font-extrabold">
+                  Smart Defaults
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="text-xs font-bold text-brand-700 hover:text-brand-900 flex items-center space-x-1 cursor-pointer"
+              >
+                <span>{showAdvanced ? 'Hide Parameter Adjustments' : 'Customize Profile Parameters'}</span>
+                {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+            </div>
+
+            {/* Live Statutory Previews Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs pt-1">
+              <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                <span className="text-[10px] text-slate-500 font-semibold block">MSME Status</span>
+                <span className="font-bold text-slate-900">{msmePreview.label}</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                <span className="text-[10px] text-slate-500 font-semibold block">Labour Regulation</span>
+                <span className="font-bold text-slate-900">
+                  {activeProfile.employeeCount >= 10 && selectedIndustry !== 'Information Technology' ? 'Factories Act (10+)' : 'Shops & Est. Act'}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                <span className="text-[10px] text-slate-500 font-semibold block">Power Classification</span>
+                <span className="font-bold text-slate-900">
+                  {activeProfile.powerRequired > 50 ? 'High Tension (HT)' : 'Low Tension (LT)'}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                <span className="text-[10px] text-slate-500 font-semibold block">Fire NOC Norm</span>
+                <span className="font-bold text-slate-900">
+                  {activeProfile.builtUpArea >= 500 && selectedIndustry !== 'Information Technology' ? 'Mandatory NOC (>=500m²)' : 'Basic Compliance'}
+                </span>
+              </div>
+            </div>
+
+            {/* Expandable Inputs Grid */}
+            {showAdvanced && (
+              <div className="pt-4 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs animate-fadeIn">
+                
+                {/* Legal Entity */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-800 flex items-center space-x-1">
+                    <Briefcase className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Entity Structure</span>
+                  </label>
+                  <select
+                    value={activeProfile.entityType}
+                    onChange={(e) => updateProfile('entityType', e.target.value)}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 outline-hidden"
+                  >
+                    <option value="Private Limited Company">Private Limited Company</option>
+                    <option value="Limited Liability Partnership (LLP)">Limited Liability Partnership (LLP)</option>
+                    <option value="Partnership Firm">Partnership Firm</option>
+                    <option value="Sole Proprietorship">Sole Proprietorship</option>
+                    <option value="Public Limited Company">Public Limited Company</option>
+                  </select>
+                </div>
+
+                {/* Investment */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-800">
+                    Plant & Machinery Investment (₹ Cr)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    value={activeProfile.investment}
+                    onChange={(e) => updateProfile('investment', parseFloat(e.target.value) || 0)}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 outline-hidden"
+                  />
+                  <span className="text-[10px] text-slate-500">MSME threshold: Micro ≤ 1, Small ≤ 10, Medium ≤ 50 Cr</span>
+                </div>
+
+                {/* Annual Turnover */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-800">
+                    Expected Annual Turnover (₹ Cr)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0.1"
+                    value={activeProfile.turnover}
+                    onChange={(e) => updateProfile('turnover', parseFloat(e.target.value) || 0)}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 outline-hidden"
+                  />
+                  <span className="text-[10px] text-slate-500">GST mandatory if turnover ≥ ₹0.40 Cr</span>
+                </div>
+
+                {/* Workers / Employees */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-800 flex items-center space-x-1">
+                    <Users className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Workforce (Employees / Workers)</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={activeProfile.employeeCount}
+                    onChange={(e) => updateProfile('employeeCount', parseInt(e.target.value, 10) || 1)}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 outline-hidden"
+                  />
+                  <span className="text-[10px] text-slate-500">Factories Act triggers at 10+ with power; EPFO at 20+</span>
+                </div>
+
+                {/* Power Load */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-800 flex items-center space-x-1">
+                    <Zap className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Connected Electrical Load (HP)</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={activeProfile.powerRequired}
+                    onChange={(e) => updateProfile('powerRequired', parseFloat(e.target.value) || 0)}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 outline-hidden"
+                  />
+                  <span className="text-[10px] text-slate-500">Loads &gt; 50 HP trigger HT substation clearance</span>
+                </div>
+
+                {/* Built-up Area */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-800 flex items-center space-x-1">
+                    <Maximize2 className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Built-up / Shed Area (sq.m)</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="50"
+                    value={activeProfile.builtUpArea}
+                    onChange={(e) => updateProfile('builtUpArea', parseFloat(e.target.value) || 0)}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 outline-hidden"
+                  />
+                  <span className="text-[10px] text-slate-500">NBC Fire NOC required if area ≥ 500 sq.m</span>
+                </div>
+
+                {/* Checkboxes: Hazardous & Export */}
+                <div className="sm:col-span-2 lg:col-span-3 pt-2 flex flex-wrap gap-4">
+                  <label className="flex items-center space-x-2 cursor-pointer bg-white p-2.5 rounded-xl border border-slate-200">
+                    <input
+                      type="checkbox"
+                      checked={activeProfile.usesHazardousChemicals}
+                      onChange={(e) => updateProfile('usesHazardousChemicals', e.target.checked)}
+                      className="rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                    />
+                    <span className="text-xs font-semibold text-slate-800">
+                      Stores / handles flammable petroleum solvents, compressed gases, or toxic chemicals (PESO rule)
+                    </span>
+                  </label>
+
+                  <label className="flex items-center space-x-2 cursor-pointer bg-white p-2.5 rounded-xl border border-slate-200">
+                    <input
+                      type="checkbox"
+                      checked={activeProfile.isExportOriented}
+                      onChange={(e) => updateProfile('isExportOriented', e.target.checked)}
+                      className="rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                    />
+                    <span className="text-xs font-semibold text-slate-800">
+                      100% Export Oriented Unit (EOU) / International Export
+                    </span>
+                  </label>
+                </div>
+
+              </div>
+            )}
           </div>
 
           {/* Selected Industry Context Preview Banner */}
@@ -288,7 +547,7 @@ export const BusinessForm = ({
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-100">
             <div className="text-xs text-slate-500 flex items-center space-x-1">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>Instant evaluation • No login required to view approvals</span>
+              <span>Instant evaluation • Statutory rules & dependency engine applied</span>
             </div>
 
             <button
@@ -299,11 +558,11 @@ export const BusinessForm = ({
               {isLoading ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Generating Personalized Matrix...</span>
+                  <span>Evaluating Statutory Rules & Graph...</span>
                 </>
               ) : (
                 <>
-                  <span>Find Required Approvals</span>
+                  <span>Find Required Approvals & Sequence</span>
                   <ArrowRight className="w-5 h-5" />
                 </>
               )}

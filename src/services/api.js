@@ -34,3 +34,17 @@ export const adminApi = {
   verifications: () => request('/admin/verifications'),
   users: () => request('/admin/users')
 };
+
+export const approvalApi = {
+  evaluate: (profile, userApplications = []) =>
+    request('/approvals/evaluate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...profile, userApplications })
+    }),
+  getCatalog: (state, district) =>
+    request(`/approvals/catalog?state=${encodeURIComponent(state || 'Maharashtra')}&district=${encodeURIComponent(district || 'Pune')}`),
+  getDependencies: (state, district, industry) =>
+    request(`/approvals/dependencies?state=${encodeURIComponent(state || 'Maharashtra')}&district=${encodeURIComponent(district || 'Pune')}&industry=${encodeURIComponent(industry || 'Manufacturing')}`)
+};
+
