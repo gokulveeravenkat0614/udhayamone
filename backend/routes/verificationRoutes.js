@@ -1,0 +1,12 @@
+const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const auth = require('../middleware/authMiddleware');
+const { submit, status, history } = require('../controllers/verificationController');
+const router = express.Router();
+const storage = multer.diskStorage({ destination:(_,__,cb)=>cb(null,path.join(__dirname,'../uploads')), filename:(_,file,cb)=>cb(null,`${Date.now()}-${Math.round(Math.random()*1e9)}${path.extname(file.originalname)}`) });
+const upload = multer({ storage, limits:{ fileSize:8*1024*1024 }, fileFilter:(_,file,cb)=>cb(null, file.mimetype.startsWith('image/')) });
+router.post('/submit', auth, upload.fields([{name:'document1',maxCount:1},{name:'document2',maxCount:1},{name:'selfie',maxCount:1}]), submit);
+router.get('/status', auth, status);
+router.get('/history', auth, history);
+module.exports = router;

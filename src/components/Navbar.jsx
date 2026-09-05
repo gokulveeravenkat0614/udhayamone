@@ -1,0 +1,301 @@
+import React, { useState } from 'react';
+import { 
+  Building2, 
+  ShieldCheck, 
+  UserCheck, 
+  Menu, 
+  X, 
+  ChevronDown, 
+  AlertCircle, 
+  Info
+} from 'lucide-react';
+
+export const Navbar = ({ 
+  currentTab, 
+  setCurrentTab, 
+  activeRole, 
+  setActiveRole, 
+  _onOpenAuth 
+}) => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const [showDemoDisclaimerModal, setShowDemoDisclaimerModal] = useState(false);
+
+  const navLinks = [
+    { id: 'home', label: 'Home' },
+    { id: 'wizard', label: 'Requirements' },
+    { id: 'compliance', label: 'Compliance' },
+    { id: 'schemes', label: 'Government Schemes' },
+    { id: 'dashboard', label: 'My Applications' },
+    ...(activeRole === 'admin' ? [{ id: 'admin', label: 'Admin Dashboard' }] : []),
+    { id: 'help', label: 'Help & FAQs' }
+  ];
+
+  const handleNavClick = (tabId) => {
+    setCurrentTab(tabId);
+    setMobileMenuOpen(false);
+  };
+
+  return (
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
+      
+      {/* Top Advisory Banner with MVP DEMO badge */}
+      <div className="bg-gradient-to-r from-slate-900 via-brand-950 to-slate-900 text-white text-xs py-1.5 px-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            {/* Clickable MVP DEMO Badge as requested in Rule 22 */}
+            <button
+              onClick={() => setShowDemoDisclaimerModal(true)}
+              className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-black bg-amber-400 hover:bg-amber-300 text-slate-950 uppercase tracking-wide cursor-pointer transition-colors shadow-2xs"
+              title="Click to view prototype notice"
+            >
+              <span>MVP DEMO</span>
+              <Info className="w-3 h-3 text-slate-950" />
+            </button>
+
+            <span className="hidden md:inline text-slate-300">
+              UdyamOne – Industrial Approval & Compliance Assistant • Smart India Hackathon Prototype
+            </span>
+            <span className="md:hidden text-slate-300">
+              UdyamOne Assistant • Prototype
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-4 text-slate-300 text-xs">
+            <span className="hidden sm:inline text-slate-400 text-[11px]">
+              Assistance & Discovery Tool (Not a government portal)
+            </span>
+            <span className="text-slate-600 hidden sm:inline">|</span>
+            
+            {/* Demo Mode / Role Switcher */}
+            <div className="relative">
+              <button
+                onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
+                className="flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-[11px] font-medium transition-colors"
+                title="Switch view mode for demonstration"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span>Mode: <strong className="text-amber-300">{activeRole === 'admin' ? 'Admin Console' : activeRole === 'officer' ? 'Demo Officer Desk' : 'Applicant View'}</strong></span>
+                <ChevronDown className="w-3 h-3" />
+              </button>
+
+              {roleDropdownOpen && (
+                <div 
+                  className="absolute right-0 mt-1.5 w-60 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 text-slate-800 animate-fadeIn"
+                  onMouseLeave={() => setRoleDropdownOpen(false)}
+                >
+                  <div className="px-3 py-1 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Demonstration Mode Switcher
+                  </div>
+                  <button
+                    onClick={() => {
+                      setActiveRole('entrepreneur');
+                      setCurrentTab('dashboard');
+                      setRoleDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-xs flex items-center space-x-2 hover:bg-slate-50 ${activeRole === 'entrepreneur' ? 'bg-blue-50 text-brand-700 font-semibold' : ''}`}
+                  >
+                    <UserCheck className="w-4 h-4 text-brand-600" />
+                    <div>
+                      <div className="text-xs font-bold">Applicant Workspace</div>
+                      <div className="text-[10px] text-slate-500">Track user-initiated applications</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveRole('admin');
+                      setCurrentTab('admin');
+                      setRoleDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-xs flex items-center space-x-2 hover:bg-slate-50 ${activeRole === 'admin' ? 'bg-blue-50 text-brand-700 font-semibold' : ''}`}
+                  >
+                    <ShieldCheck className="w-4 h-4 text-brand-600" />
+                    <div>
+                      <div className="text-xs font-bold">Admin Console</div>
+                      <div className="text-[10px] text-slate-500">Identity verification monitoring</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveRole('officer');
+                      setCurrentTab('officer');
+                      setRoleDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-xs flex items-center space-x-2 hover:bg-slate-50 ${activeRole === 'officer' ? 'bg-blue-50 text-brand-700 font-semibold' : ''}`}
+                  >
+                    <ShieldCheck className="w-4 h-4 text-amber-600" />
+                    <div>
+                      <div className="text-xs font-bold">Demo Officer Review Desk</div>
+                      <div className="text-[10px] text-slate-500">Simulate department action on user applications</div>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Navbar */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-20">
+          
+          {/* Logo & Emblem - Honest Branding */}
+          <div className="flex items-center space-x-3 cursor-pointer select-none" onClick={() => handleNavClick('home')}>
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-900 via-brand-800 to-blue-600 flex items-center justify-center text-white shadow-md shadow-brand-900/15 ring-2 ring-blue-100">
+              <Building2 className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-1.5">
+                <span className="text-2xl font-black tracking-tight text-slate-900">
+                  Udyam<span className="text-brand-700">One</span>
+                </span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-brand-800 border border-blue-200">
+                  Assistant
+                </span>
+              </div>
+              <p className="text-[11px] font-medium text-slate-500 tracking-tight hidden sm:block">
+                Industrial Approval & Compliance Assistant
+              </p>
+            </div>
+          </div>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden lg:flex items-center space-x-1">
+            {navLinks.map((link) => (
+              <button
+                key={link.id}
+                onClick={() => handleNavClick(link.id)}
+                className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-all ${
+                  currentTab === link.id
+                    ? 'text-brand-700 bg-brand-50/80 font-bold shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+                }`}
+              >
+                {link.label}
+              </button>
+            ))}
+
+            {activeRole === 'admin' && (
+            <button
+              onClick={() => handleNavClick('admin')}
+              className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-brand-800 hover:bg-blue-50"
+            >Admin Dashboard</button>
+          )}
+          {activeRole === 'officer' && (
+              <button
+                onClick={() => handleNavClick('officer')}
+                className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all flex items-center space-x-1.5 ${
+                  currentTab === 'officer' ? 'text-amber-800 bg-amber-50 font-bold' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4 text-amber-600" />
+                <span>Officer Desk</span>
+              </button>
+            )}
+          </nav>
+
+          {/* Right Action */}
+          <div className="hidden sm:flex items-center space-x-3">
+            <button
+              onClick={() => handleNavClick('wizard')}
+              className="px-4 py-2.5 text-xs font-bold text-white bg-brand-700 hover:bg-brand-800 rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
+            >
+              Find Requirements
+            </button>
+          </div>
+
+          {/* Mobile Menu Trigger */}
+          <div className="flex lg:hidden items-center space-x-2">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Mobile Drawer */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden bg-white border-b border-slate-200 px-4 pt-2 pb-6 space-y-2 shadow-lg animate-fadeIn">
+          {navLinks.map((link) => (
+            <button
+              key={link.id}
+              onClick={() => handleNavClick(link.id)}
+              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium ${
+                currentTab === link.id
+                  ? 'text-brand-700 bg-brand-50 font-bold'
+                  : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              {link.label}
+            </button>
+          ))}
+          {activeRole === 'admin' && (
+            <button
+              onClick={() => handleNavClick('admin')}
+              className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-brand-800 hover:bg-blue-50"
+            >Admin Dashboard</button>
+          )}
+          {activeRole === 'officer' && (
+            <button
+              onClick={() => handleNavClick('officer')}
+              className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-amber-800 hover:bg-amber-50"
+            >
+              Demo Officer Review Desk
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* MVP DEMO Notice Modal (Rule 22) */}
+      {showDemoDisclaimerModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200 animate-scaleUp relative">
+            <button
+              onClick={() => setShowDemoDisclaimerModal(false)}
+              className="absolute top-5 right-5 p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mb-3">
+              <AlertCircle className="w-6 h-6 text-amber-600" />
+            </div>
+
+            <div className="inline-block px-2.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-black uppercase mb-1">
+              MVP Prototype Notice
+            </div>
+
+            <h3 className="text-xl font-black text-slate-900 tracking-tight">
+              About UdyamOne MVP
+            </h3>
+
+            <p className="text-xs text-slate-600 leading-relaxed mt-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+              This is a demonstration prototype created for the Smart India Hackathon. Government requirements and processes shown are based on statutory frameworks and should be verified with the relevant official authority before real-world use.
+            </p>
+
+            <div className="mt-4 text-[11px] text-slate-500 space-y-1">
+              <div>✓ Verified statutory authority references</div>
+              <div>✓ Real in-browser session document upload</div>
+              <div>✓ Demonstration application lifecycle simulation</div>
+            </div>
+
+            <div className="mt-6 pt-3 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setShowDemoDisclaimerModal(false)}
+                className="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Understood
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </header>
+  );
+};
