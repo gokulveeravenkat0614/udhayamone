@@ -228,11 +228,30 @@ async function deleteRecord(req, res) {
   }
 }
 
+function registerMemoryRecord(rec) {
+  const idx = memoryRecords.findIndex(r => 
+    r.documentId === rec.documentId && 
+    ((rec.applicationId && r.applicationId === rec.applicationId) || (!rec.applicationId))
+  );
+  if (idx >= 0) memoryRecords[idx] = { ...memoryRecords[idx], ...rec };
+  else memoryRecords.push(rec);
+}
+
+function removeMemoryRecord(documentId, applicationId, userId) {
+  memoryRecords = memoryRecords.filter(r => 
+    !(r.documentId === documentId && 
+      (!applicationId || r.applicationId === applicationId) &&
+      (!userId || r.userId === userId))
+  );
+}
+
 module.exports = {
   validateDocument,
   getRecords,
   addRecord,
   deleteRecord,
   ensureDemoDocumentRecords,
-  SEED_DOCUMENT_RECORDS
+  SEED_DOCUMENT_RECORDS,
+  registerMemoryRecord,
+  removeMemoryRecord
 };

@@ -40,8 +40,8 @@ export const INITIAL_DATABASE_DOCUMENT_RECORDS = [
     name: 'Land Ownership / Lease Documents',
     category: 'Property & Land',
     status: 'APPROVED',
-    registeredAuthority: 'MIDC / Revenue Department',
-    verificationSource: 'Bhulekh 7/12 Land Registry'
+    registeredAuthority: 'Revenue Department / Industrial Infrastructure (TSIIC / MIDC)',
+    verificationSource: 'Land Registry / Bhulekh Portal'
   },
   {
     documentId: 'doc-building',
@@ -49,8 +49,8 @@ export const INITIAL_DATABASE_DOCUMENT_RECORDS = [
     name: 'Building Layout / Site Plan',
     category: 'Engineering',
     status: 'APPROVED',
-    registeredAuthority: 'Planning Authority / Directorate of Town Planning',
-    verificationSource: 'BPAMS Portal'
+    registeredAuthority: 'Planning Authority (HMDA / TS-bPASS / DTCP / Planning Directorate)',
+    verificationSource: 'Building Plan Approval Management System'
   },
   {
     documentId: 'doc-machinery',
@@ -58,7 +58,7 @@ export const INITIAL_DATABASE_DOCUMENT_RECORDS = [
     name: 'Machinery Details',
     category: 'Technical Equipment',
     status: 'APPROVED',
-    registeredAuthority: 'Directorate of Industrial Safety & Health (DISH)',
+    registeredAuthority: 'Department of Factories / Industrial Safety Directorate',
     verificationSource: 'Technical Safety Registry'
   }
 ];

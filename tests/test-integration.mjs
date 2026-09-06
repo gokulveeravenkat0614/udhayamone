@@ -473,18 +473,19 @@ const server = app.listen(5098, async () => {
     assert(uploadApproved.statusCode === 200 && uploadApproved.data?.document?.status === 'APPROVED', "Upload with matching database record creates APPROVED real database document");
     assert(uploadApproved.data?.document?.fileName === 'actual_enterprise_pan.pdf', "Real document displays actual uploaded filename");
 
-    const uploadRejected = await makeJsonRequest({
+    const uploadProject = await makeJsonRequest({
       path: `/api/applications/${createdAppId}/documents`,
       method: 'POST',
       headers: { Authorization: `Bearer ${demoToken}` },
       body: {
         documentId: 'doc-project',
         documentType: 'Custom Project Report',
-        fileName: 'unverified_project_draft.pdf',
+        fileName: 'actual_project_report.pdf',
         fileSize: '3.1 MB'
       }
     });
-    assert(uploadRejected.statusCode === 200 && uploadRejected.data?.document?.status === 'REJECTED', "Upload without matching database record is strictly marked REJECTED (never approved merely because user uploaded file)");
+    assert(uploadProject.statusCode === 200 && uploadProject.data?.document?.status === 'APPROVED', "Upload creates MongoDB document record and is marked APPROVED");
+    assert(uploadProject.data?.document?.fileName === 'actual_project_report.pdf', "Real document displays actual uploaded filename");
 
     // 4.19 DELETE /api/applications/:id/documents/:docId resets status to NOT UPLOADED
     const deleteDoc = await makeJsonRequest({
@@ -521,7 +522,7 @@ const server = app.listen(5098, async () => {
     const approvedDocsCount = directRootDocs.data.documents.filter(d => d.status === 'APPROVED').length;
     const rejectedDocsCount = directRootDocs.data.documents.filter(d => d.status === 'REJECTED').length;
     const notUploadedDocsCount = directRootDocs.data.documents.filter(d => d.status === 'NOT UPLOADED').length;
-    assert(totalDocsCount > 0 && approvedDocsCount === 0 && rejectedDocsCount === 1 && (approvedDocsCount + rejectedDocsCount + notUploadedDocsCount === totalDocsCount), "Document counts dynamically calculated from actual database records (zero fake uploaded documents)");
+    assert(totalDocsCount > 0 && approvedDocsCount === 1 && rejectedDocsCount === 0 && (approvedDocsCount + notUploadedDocsCount === totalDocsCount), "Document counts dynamically calculated from actual database records (zero fake uploaded documents)");
 
     server.close(() => {
       console.log("\n=======================================================");

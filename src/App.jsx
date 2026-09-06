@@ -152,7 +152,21 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Validate session token on mount
+  // Synchronize applications from MongoDB backend API (Single Source of Truth)
+  const fetchUserApplications = useCallback(async () => {
+    try {
+      const token = getStoredToken();
+      if (!token) return;
+      const res = await applicationApi.getMyApplications();
+      if (res && res.success && Array.isArray(res.applications)) {
+        setApplications(res.applications);
+      }
+    } catch (err) {
+      console.warn('Could not sync applications from MongoDB:', err.message);
+    }
+  }, []);
+
+  // Validate session token on mount & load applications from MongoDB
   useEffect(() => {
     const token = getStoredToken();
     if (token) {
@@ -162,9 +176,11 @@ export default function App() {
             setCurrentUser(res.user);
             if (res.user.role === 'admin') setActiveRole('admin');
             else setActiveRole('entrepreneur');
+            fetchUserApplications();
           } else {
             clearAuthSession();
             setCurrentUser(null);
+            setApplications([]);
           }
         })
         .catch(() => {
@@ -173,7 +189,7 @@ export default function App() {
           if (cached) setCurrentUser(cached);
         });
     }
-  }, []);
+  }, [fetchUserApplications]);
 
   // Persist legacy applications
   useEffect(() => {
@@ -186,6 +202,7 @@ export default function App() {
     const role = user.role === 'admin' ? 'admin' : 'entrepreneur';
     setActiveRole(role);
     showToast(`Welcome back, ${user.name}!`);
+    fetchUserApplications();
     navigate('/dashboard');
   };
 
@@ -193,6 +210,7 @@ export default function App() {
   const handleLogout = () => {
     clearAuthSession();
     setCurrentUser(null);
+    setApplications([]);
     setActiveRole('visitor');
     showToast('Logged out successfully.');
     navigate('/login');

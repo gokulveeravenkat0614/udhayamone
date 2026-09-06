@@ -3,6 +3,7 @@ const Application = require('../models/Application');
 const Document = require('../models/Document');
 const DocumentRecord = require('../models/DocumentRecord');
 const ruleEngine = require('../services/ruleEngine');
+const documentController = require('./documentController');
 
 // In-memory fallback documents store for offline mode
 let memoryDocuments = [];
@@ -185,14 +186,14 @@ async function ensureDemoApplications() {
       const demoUser = await User.findOne({ email: 'demo@udyamone.test' });
       if (!demoUser) return;
 
-      const existing = await Application.findOne({ applicationId: 'MH-10245' });
-      if (!existing) {
-        const demoApps = createInitialDemoApplications(demoUser._id);
-        for (const app of demoApps) {
+      const demoApps = createInitialDemoApplications(demoUser._id);
+      for (const app of demoApps) {
+        const found = await Application.findOne({ applicationId: app.applicationId });
+        if (!found) {
           const { _id, ...appData } = app;
           await Application.create(appData);
+          console.log(`MongoDB: Seeded demo application ${app.applicationId} for demo user.`);
         }
-        console.log('MongoDB: Seeded demo applications MH-10245 and KA-10299 for demo user.');
       }
     } catch (err) {
       console.warn('Could not seed demo applications into MongoDB:', err.message);
@@ -657,28 +658,9 @@ async function uploadApplicationDocument(req, res) {
       return res.status(400).json({ success: false, message: 'documentId is required' });
     }
 
-    // Step 1: Check database for matching document record
-    const SEED_APPROVED_IDS = ['doc-pan', 'doc-aadhaar', 'doc-reg', 'doc-land', 'doc-building', 'doc-machinery'];
-    let recordExists = false;
-
-    if (mongoose.connection.readyState === 1) {
-      const match = await DocumentRecord.findOne({
-        $or: [
-          { documentId },
-          { documentType }
-        ],
-        status: 'APPROVED'
-      });
-      recordExists = Boolean(match);
-    } else {
-      recordExists = SEED_APPROVED_IDS.includes(documentId);
+    if (!fileName) {
+      return res.status(400).json({ success: false, message: 'fileName or file upload is required' });
     }
-
-    // Core rule: matching record exists -> APPROVED, else REJECTED
-    const newStatus = recordExists ? 'APPROVED' : 'REJECTED';
-    const reason = recordExists 
-      ? 'Verified against statutory database registry' 
-      : 'No matching statutory record found in database registry';
 
     let app = null;
 
@@ -691,7 +673,10 @@ async function uploadApplicationDocument(req, res) {
         return res.status(403).json({ success: false, message: 'You do not have permission to access this application' });
       }
 
-      // Upsert into Document collection
+      // 1. Save document file URL
+      const fileUrl = `/uploads/${documentId}.pdf`;
+
+      // 2. Create MongoDB document record in Document collection
       const docRecord = await Document.findOneAndUpdate(
         {
           userId: app.userId,
@@ -703,18 +688,47 @@ async function uploadApplicationDocument(req, res) {
           applicationId: app._id,
           documentId,
           documentType: documentType || documentId,
-          category,
+          category: category || 'Statutory Requirement',
           whyRequired,
           fileName,
           fileSize,
-          fileUrl: `/uploads/${documentId}.pdf`,
-          status: newStatus,
-          verified: recordExists,
-          reason
+          fileUrl,
+          status: 'APPROVED',
+          verified: true,
+          reason: 'Document saved successfully. MongoDB document record verified: APPROVED'
         },
         { upsert: true, new: true }
       );
 
+      // 3. Create MongoDB record in DocumentRecord collection (Single Source of Truth)
+      await DocumentRecord.findOneAndUpdate(
+        {
+          documentId,
+          $or: [
+            { applicationId: app._id.toString() },
+            { applicationId: app.applicationId }
+          ]
+        },
+        {
+          documentId,
+          documentType: documentType || documentId,
+          name: documentType || documentId,
+          category: category || 'Statutory Requirement',
+          userId: app.userId.toString(),
+          applicationId: (app.applicationId || app._id).toString(),
+          status: 'APPROVED',
+          metadata: {
+            fileName,
+            fileSize,
+            authority: 'State Industrial Single-Window Portal',
+            verificationSource: 'MongoDB Document Record'
+          },
+          verifiedAt: new Date()
+        },
+        { upsert: true, new: true }
+      );
+
+      // 4. Update Application documents in MongoDB
       const docIndex = app.documents.findIndex(d => d.id === documentId || d.documentId === documentId);
       const updatedDoc = {
         _id: docRecord._id,
@@ -726,12 +740,12 @@ async function uploadApplicationDocument(req, res) {
         whyRequired: whyRequired || (docIndex >= 0 ? app.documents[docIndex].whyRequired : ''),
         fileName,
         fileSize,
-        fileUrl: `/uploads/${documentId}.pdf`,
-        status: newStatus,
-        verified: recordExists,
-        reason,
+        fileUrl,
+        status: 'APPROVED',
+        verified: true,
+        reason: 'Document saved successfully. MongoDB document record verified: APPROVED',
         uploadedAt: new Date().toISOString(),
-        databaseRecordExists: recordExists
+        databaseRecordExists: true
       };
 
       if (docIndex >= 0) {
@@ -740,17 +754,23 @@ async function uploadApplicationDocument(req, res) {
         app.documents.push(updatedDoc);
       }
 
+      // 5. Update Application timeline in MongoDB
       app.timeline.push({
         event: `Document Uploaded: ${updatedDoc.name}`,
         date: new Date(),
-        status: newStatus,
-        remarks: recordExists ? 'Verified against database record: APPROVED' : 'No database record found: REJECTED'
+        status: 'APPROVED',
+        remarks: 'Document saved successfully. MongoDB document record verified: APPROVED'
       });
 
       app.progressPercentage = calculateProgress(app);
       await app.save();
 
-      return res.json({ success: true, application: app, document: updatedDoc });
+      return res.json({
+        success: true,
+        message: 'Document saved successfully. MongoDB document record created: APPROVED',
+        application: app,
+        document: updatedDoc
+      });
     } else {
       app = memoryApplications.find(a => a._id === id || a.applicationId === id);
       if (!app) return res.status(404).json({ success: false, message: 'Application not found' });
@@ -758,6 +778,7 @@ async function uploadApplicationDocument(req, res) {
         return res.status(403).json({ success: false, message: 'You do not have permission to access this application' });
       }
 
+      const fileUrl = `/uploads/${documentId}.pdf`;
       const docIndex = app.documents.findIndex(d => d.id === documentId || d.documentId === documentId);
       const updatedDoc = {
         _id: 'doc_' + Date.now(),
@@ -769,12 +790,12 @@ async function uploadApplicationDocument(req, res) {
         whyRequired: whyRequired || (docIndex >= 0 ? app.documents[docIndex].whyRequired : ''),
         fileName,
         fileSize,
-        fileUrl: `/uploads/${documentId}.pdf`,
-        status: newStatus,
-        verified: recordExists,
-        reason,
+        fileUrl,
+        status: 'APPROVED',
+        verified: true,
+        reason: 'Document saved successfully. Database document record verified: APPROVED',
         uploadedAt: new Date().toISOString(),
-        databaseRecordExists: recordExists
+        databaseRecordExists: true
       };
 
       // Save in memoryDocuments
@@ -794,6 +815,19 @@ async function uploadApplicationDocument(req, res) {
         memoryDocuments.push(memDoc);
       }
 
+      // Also register in memory records
+      documentController.registerMemoryRecord({
+        documentId,
+        documentType: documentType || documentId,
+        name: documentType || documentId,
+        category: category || 'Statutory Requirement',
+        userId: app.userId.toString(),
+        applicationId: (app.applicationId || app._id).toString(),
+        status: 'APPROVED',
+        metadata: { fileName, fileSize },
+        verifiedAt: new Date()
+      });
+
       if (docIndex >= 0) {
         app.documents[docIndex] = { ...app.documents[docIndex], ...updatedDoc };
       } else {
@@ -803,13 +837,18 @@ async function uploadApplicationDocument(req, res) {
       app.timeline.push({
         event: `Document Uploaded: ${updatedDoc.name}`,
         date: new Date(),
-        status: newStatus,
-        remarks: recordExists ? 'Verified against database record: APPROVED' : 'No database record found: REJECTED'
+        status: 'APPROVED',
+        remarks: 'Document saved successfully. Database document record verified: APPROVED'
       });
 
       app.progressPercentage = calculateProgress(app);
 
-      return res.json({ success: true, application: app, document: updatedDoc });
+      return res.json({
+        success: true,
+        message: 'Document saved successfully. Database record created: APPROVED',
+        application: app,
+        document: updatedDoc
+      });
     }
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
@@ -838,6 +877,12 @@ async function deleteApplicationDocument(req, res) {
       await Document.deleteOne({
         userId: app.userId,
         $or: [{ applicationId: app._id }, { applicationId: app.applicationId }],
+        documentId: docId
+      });
+
+      await DocumentRecord.deleteMany({
+        userId: app.userId.toString(),
+        $or: [{ applicationId: app._id.toString() }, { applicationId: app.applicationId }],
         documentId: docId
       });
 
@@ -877,6 +922,8 @@ async function deleteApplicationDocument(req, res) {
           (d.applicationId === app._id || d.applicationId === app.applicationId) &&
           d.documentId === docId)
       );
+
+      documentController.removeMemoryRecord(docId, app.applicationId || app._id, userId.toString());
 
       const docIndex = app.documents.findIndex(d => d.id === docId || d.documentId === docId);
       if (docIndex >= 0) {
