@@ -131,33 +131,164 @@ function calculatePollutionCategory(industry, profile) {
  */
 function getJurisdictionAuthorities(state, district) {
   const isMH = state === 'Maharashtra';
+  const isTG = state === 'Telangana';
   const isPune = isMH && district === 'Pune';
 
+  // Telangana geographical regions
+  const isHMDA = isTG && ['Hyderabad', 'Medchal-Malkajgiri', 'Rangareddy', 'Sangareddy'].includes(district);
+  const isSouthernTG = isTG && [
+    'Hyderabad', 'Rangareddy', 'Medchal-Malkajgiri', 'Sangareddy',
+    'Mahabubnagar', 'Nalgonda', 'Suryapet', 'Yadadri Bhuvanagiri',
+    'Vikarabad', 'Narayanpet', 'Wanaparthy', 'Jogulamba Gadwal', 'Nagarkurnool'
+  ].includes(district);
+
+  if (isTG) {
+    return {
+      state: 'Telangana',
+      district,
+      singleWindowName: 'TS-iPASS (Telangana State Industrial Project Approval and Self-Certification System)',
+      singleWindowUrl: 'https://ipass.telangana.gov.in',
+
+      factoryAuthority: 'Department of Factories, Government of Telangana',
+      factoryAuthorityShort: 'Director of Factories, Telangana',
+      factoryUrl: 'https://factories.telangana.gov.in',
+      factoryAct: 'Factories Act, 1948 & Telangana Factories Rules, 1950',
+
+      pollutionAuthority: 'Telangana State Pollution Control Board (TSPCB)',
+      pollutionAuthorityShort: 'TSPCB',
+      pollutionUrl: 'https://tspcb.cpcb.gov.in',
+      pollutionPortalName: 'TSPCB OCMMS / TS-iPASS Portal',
+
+      fireAuthority: 'Telangana State Disaster Response and Fire Services Department (TS-Fire)',
+      fireAuthorityShort: 'TS-Fire',
+      fireUrl: 'https://fire.telangana.gov.in',
+      fireAct: 'Telangana Fire Service Act, 1999 & NBC 2016',
+
+      planningAuthority: isHMDA
+        ? 'Hyderabad Metropolitan Development Authority (HMDA) / TS-bPASS / TSIIC'
+        : 'Directorate of Town & Country Planning (DTCP), Telangana / TS-bPASS / TSIIC',
+      planningAuthorityShort: isHMDA ? 'HMDA / TS-bPASS / TSIIC' : 'DTCP / TS-bPASS / TSIIC',
+      planningUrl: 'https://tsbpass.telangana.gov.in',
+      planningAct: 'Telangana State Building Permission Approval and Self-Certification System (TS-bPASS) Act, 2020',
+      industrialLandCorp: 'Telangana State Industrial Infrastructure Corporation (TSIIC)',
+
+      powerAuthority: isSouthernTG
+        ? 'Southern Power Distribution Company of Telangana Limited (TGSPDCL)'
+        : 'Northern Power Distribution Company of Telangana Limited (TGNPDCL)',
+      powerAuthorityShort: isSouthernTG ? 'TGSPDCL' : 'TGNPDCL',
+      powerUrl: isSouthernTG ? 'https://www.tssspdcl.com' : 'https://www.tsnpdcl.in',
+      electricalInspector: 'Chief Electrical Inspector to Government (CEIG), Telangana',
+
+      labourAuthority: 'Labour Department, Government of Telangana',
+      labourUrl: 'https://labour.telangana.gov.in',
+      shopActName: 'Telangana Shops and Establishments Act, 1988',
+
+      drugAuthority: 'Drugs Control Administration, Government of Telangana (DCA Telangana)',
+      drugUrl: 'https://dca.telangana.gov.in',
+
+      taxAuthority: 'Commercial Taxes Department, Government of Telangana (TGST)',
+      taxUrl: 'https://tgct.gov.in',
+
+      waterAuthority: isHMDA
+        ? 'Hyderabad Metropolitan Water Supply and Sewerage Board (HMWSSB) / TSIIC'
+        : 'TSIIC Industrial Water / Mission Bhagiratha, Telangana'
+    };
+  }
+
+  if (isMH) {
+    return {
+      state: 'Maharashtra',
+      district,
+      singleWindowName: 'Maitri Single Window System',
+      singleWindowUrl: 'https://maitri.mahaonline.gov.in',
+
+      factoryAuthority: 'Directorate of Industrial Safety & Health (DISH), Maharashtra',
+      factoryAuthorityShort: 'DISH Inspection',
+      factoryUrl: 'https://dish.maharashtra.gov.in',
+      factoryAct: 'Factories Act, 1948 & Maharashtra Factories Rules, 1963',
+
+      pollutionAuthority: 'Maharashtra Pollution Control Board (MPCB)',
+      pollutionAuthorityShort: 'MPCB',
+      pollutionUrl: 'https://mpcb.gov.in',
+      pollutionPortalName: 'MPCB Portal',
+
+      fireAuthority: isPune
+        ? 'Pune Municipal Corporation / PMRDA Fire Department'
+        : 'Maharashtra Fire Services',
+      fireAuthorityShort: isPune ? 'PMRDA Fire' : 'MahaFire',
+      fireUrl: 'https://mahafireservice.gov.in',
+      fireAct: 'Maharashtra Fire Prevention & Life Safety Measures Act, 2006 & NBC 2016',
+
+      planningAuthority: isPune
+        ? 'Pune Metropolitan Region Development Authority (PMRDA) / MIDC'
+        : 'Town Planning & Development Authority, Maharashtra',
+      planningAuthorityShort: isPune ? 'PMRDA / AutoDCR' : 'AutoDCR',
+      planningUrl: isPune ? 'https://pmrda.gov.in' : 'https://www.midcindia.org',
+      planningAct: 'MRTP Act, 1966 & Unified Development Control Regulations (UDCPR)',
+      industrialLandCorp: 'Maharashtra Industrial Development Corporation (MIDC)',
+
+      powerAuthority: 'Maharashtra State Electricity Distribution Co. Ltd. (MSEDCL)',
+      powerAuthorityShort: 'MSEDCL',
+      powerUrl: 'https://www.mahadiscom.in',
+      electricalInspector: 'Chief Electrical Inspector, Energy Department, Maharashtra',
+
+      labourAuthority: 'Labour Department, Maharashtra',
+      labourUrl: 'https://lms.mahaonline.gov.in',
+      shopActName: 'Maharashtra Shops and Establishments Act, 2017',
+
+      drugAuthority: 'Food & Drug Administration (FDA) Maharashtra',
+      drugUrl: 'https://fda.maharashtra.gov.in',
+
+      taxAuthority: 'Maharashtra State Goods and Services Tax Department',
+      taxUrl: 'https://mahagst.gov.in',
+
+      waterAuthority: 'MIDC Water Supply Division / Local Municipal Corporation'
+    };
+  }
+
   return {
-    factoryAuthority: isMH
-      ? 'Directorate of Industrial Safety & Health (DISH), Maharashtra'
-      : `Directorate of Factories & Boilers, ${state}`,
-    factoryUrl: isMH ? 'https://dish.maharashtra.gov.in' : '',
+    state,
+    district,
+    singleWindowName: `${state} Single Window Clearance System`,
+    singleWindowUrl: '',
 
-    pollutionAuthority: isMH
-      ? 'Maharashtra Pollution Control Board (MPCB)'
-      : `${state} State Pollution Control Board (SPCB)`,
-    pollutionUrl: isMH ? 'https://mpcb.gov.in' : 'https://cpcb.nic.in',
+    factoryAuthority: `Directorate of Factories & Boilers, ${state}`,
+    factoryAuthorityShort: 'Factory Inspection',
+    factoryUrl: '',
+    factoryAct: 'Factories Act, 1948 & State Factory Rules',
 
-    fireAuthority: isMH
-      ? (isPune ? 'Pune Municipal Corporation / PMRDA Fire Department' : 'Maharashtra Fire Services')
-      : `State Fire & Emergency Services, ${state}`,
-    fireUrl: isMH ? 'https://mahafireservice.gov.in' : '',
+    pollutionAuthority: `${state} State Pollution Control Board (SPCB)`,
+    pollutionAuthorityShort: 'SPCB',
+    pollutionUrl: 'https://cpcb.nic.in',
+    pollutionPortalName: 'State SPCB Portal',
 
-    planningAuthority: isMH
-      ? (isPune ? 'Pune Metropolitan Region Development Authority (PMRDA) / MIDC' : `Town Planning & Development Authority, ${state}`)
-      : `Industrial Development Corporation, ${state}`,
-    planningUrl: isMH ? (isPune ? 'https://pmrda.gov.in' : 'https://www.midcindia.org') : '',
+    fireAuthority: `State Fire & Emergency Services, ${state}`,
+    fireAuthorityShort: 'State Fire Services',
+    fireUrl: '',
+    fireAct: 'State Fire Prevention Act & NBC 2016',
 
-    powerAuthority: isMH
-      ? 'Maharashtra State Electricity Distribution Co. Ltd. (MSEDCL)'
-      : `${state} Electricity Distribution Corporation (DISCOM)`,
-    powerUrl: isMH ? 'https://www.mahadiscom.in' : ''
+    planningAuthority: `Industrial Development Corporation, ${state}`,
+    planningAuthorityShort: 'Town Planning',
+    planningUrl: '',
+    planningAct: 'State Town Planning Act & Development Control Regulations',
+    industrialLandCorp: `State Industrial Development Corporation, ${state}`,
+
+    powerAuthority: `${state} Electricity Distribution Corporation (DISCOM)`,
+    powerAuthorityShort: 'DISCOM',
+    powerUrl: '',
+    electricalInspector: `Chief Electrical Inspector, ${state}`,
+
+    labourAuthority: `Labour Department, ${state}`,
+    labourUrl: '',
+    shopActName: 'State Shops & Commercial Establishments Act',
+
+    drugAuthority: `State Drugs Control Administration, ${state}`,
+    drugUrl: 'https://cdsco.gov.in',
+
+    taxAuthority: `State Commercial Taxes Department, ${state}`,
+    taxUrl: '',
+
+    waterAuthority: `State Water Supply & Sewerage Board, ${state}`
   };
 }
 
@@ -176,7 +307,7 @@ function getMasterApprovalCatalog(state, district) {
       district,
       department: auth.factoryAuthority,
       authority: auth.factoryAuthority,
-      officialSource: 'Factories Act, 1948 & State Factory Rules',
+      officialSource: auth.factoryAct || 'Factories Act, 1948 & State Factory Rules',
       sourceUrl: auth.factoryUrl,
       phase: 4,
       phaseName: 'Pre-Operation & Final Licenses',
@@ -226,7 +357,7 @@ function getMasterApprovalCatalog(state, district) {
     },
     {
       id: 'app-pollution',
-      name: 'Pollution Control Consent (CTE / CTO)',
+      name: state === 'Telangana' ? 'Pollution Control Consent (CFE / CFO)' : 'Pollution Control Consent (CTE / CTO)',
       category: 'Environment',
       state,
       district,
@@ -248,7 +379,7 @@ function getMasterApprovalCatalog(state, district) {
         'Machinery Details'
       ],
       stages: [
-        'Online Application on SPCB/MPCB Portal',
+        `Online Application on ${auth.pollutionPortalName || 'SPCB Portal'}`,
         'Technical Scrutiny of Effluent / Emission Controls',
         'Consent Committee Evaluation',
         'Issuance of Consent Order with Standards'
@@ -277,7 +408,7 @@ function getMasterApprovalCatalog(state, district) {
       district,
       department: auth.fireAuthority,
       authority: auth.fireAuthority,
-      officialSource: 'National Building Code (NBC 2016) & State Fire Prevention Act',
+      officialSource: auth.fireAct || 'National Building Code (NBC 2016) & State Fire Prevention Act',
       sourceUrl: auth.fireUrl,
       phase: 2,
       phaseName: 'Pre-Establishment Clearances',
@@ -320,7 +451,7 @@ function getMasterApprovalCatalog(state, district) {
       district,
       department: auth.planningAuthority,
       authority: auth.planningAuthority,
-      officialSource: 'State Town Planning Act & Development Control Regulations',
+      officialSource: auth.planningAct || 'State Town Planning Act & Development Control Regulations',
       sourceUrl: auth.planningUrl,
       phase: 2,
       phaseName: 'Pre-Establishment Clearances',
@@ -336,7 +467,7 @@ function getMasterApprovalCatalog(state, district) {
       ],
       stages: [
         'Zoning Verification & Ownership Proof Check',
-        'AutoDCR / Architectural Blueprint Scrutiny',
+        `${auth.planningAuthorityShort ? auth.planningAuthorityShort + ' Blueprint Scrutiny' : 'AutoDCR / Architectural Blueprint Scrutiny'}`,
         'Commencement Certificate (CC) Issuance',
         'Completion & Occupancy Certificate (OC)'
       ],
@@ -451,10 +582,10 @@ function getMasterApprovalCatalog(state, district) {
       category: 'Industry-Specific Approvals',
       state,
       district,
-      department: state === 'Maharashtra' ? 'Food & Drug Administration (FDA) Maharashtra' : `State Drugs Control Administration, ${state}`,
-      authority: state === 'Maharashtra' ? 'Food & Drug Administration (FDA) Maharashtra' : `State Drugs Control Administration, ${state}`,
+      department: auth.drugAuthority || (state === 'Maharashtra' ? 'Food & Drug Administration (FDA) Maharashtra' : `State Drugs Control Administration, ${state}`),
+      authority: auth.drugAuthority || (state === 'Maharashtra' ? 'Food & Drug Administration (FDA) Maharashtra' : `State Drugs Control Administration, ${state}`),
       officialSource: 'Drugs and Cosmetics Act, 1940 & Rules 1945',
-      sourceUrl: 'https://cdsco.gov.in',
+      sourceUrl: auth.drugUrl || 'https://cdsco.gov.in',
       phase: 4,
       phaseName: 'Pre-Operation & Final Licenses',
       estimatedDays: '30 - 60 days',
@@ -538,10 +669,10 @@ function getMasterApprovalCatalog(state, district) {
       category: 'Business Registration',
       state,
       district,
-      department: state === 'Maharashtra' ? 'Labour Department, Maharashtra' : `Labour Department, ${state}`,
-      authority: state === 'Maharashtra' ? 'Labour Department, Maharashtra' : `Labour Department, ${state}`,
-      officialSource: 'State Shops & Commercial Establishments Act',
-      sourceUrl: state === 'Maharashtra' ? 'https://lms.mahaonline.gov.in' : '',
+      department: auth.labourAuthority || (state === 'Maharashtra' ? 'Labour Department, Maharashtra' : `Labour Department, ${state}`),
+      authority: auth.labourAuthority || (state === 'Maharashtra' ? 'Labour Department, Maharashtra' : `Labour Department, ${state}`),
+      officialSource: auth.shopActName || 'State Shops & Commercial Establishments Act',
+      sourceUrl: auth.labourUrl || (state === 'Maharashtra' ? 'https://lms.mahaonline.gov.in' : ''),
       phase: 1,
       phaseName: 'Entity Foundation',
       estimatedDays: '3 - 7 days',
@@ -917,17 +1048,25 @@ function buildDependencyGraph(applicableApprovals, userApplications = []) {
 /**
  * Builds recommended journey sequence with parallel execution opportunities.
  */
-function buildRecommendedSequence(auth) {
+function buildRecommendedSequence(auth = {}) {
+  const isMH = auth.state === 'Maharashtra' || auth.factoryAuthority?.includes('Maharashtra') || auth.factoryAuthority?.includes('DISH');
+  const isTG = auth.state === 'Telangana' || auth.factoryAuthority?.includes('Telangana');
+  const factorySubtitle = isMH 
+    ? 'Apply for Factory License (DISH Inspection)'
+    : isTG
+    ? 'Apply for Factory License (Telangana Factories Inspection)'
+    : 'Apply for Factory License (Factory Inspection)';
+
   return [
     {
       step: 1,
-      title: 'Complete Business Registration & MSME Udyam',
-      subtitle: 'Entity establishment and MSME identification',
-      duration: 'Typical: 1 - 3 days',
-      agency: 'MCA / MSME Portal',
-      description: 'Incorporate enterprise (Pvt Ltd, LLP, or Partnership) and verify applicability of MSME Udyam registration.',
+      title: 'Complete Business Registration & Statutory Filings',
+      subtitle: 'Entity incorporation, PAN, GST, and Udyam',
+      duration: 'Typical: 3 - 7 days',
+      agency: 'Ministry of Corporate Affairs (MCA) & MSME',
+      description: 'Incorporate your legal entity (Pvt Ltd, LLP, Partnership), obtain PAN/TAN, register for GST, and file Udyam Registration for MSME classification benefits.',
       icon: 'Building2',
-      status: 'Recommended First Step',
+      status: 'Entity Foundation',
       badgeColor: 'blue'
     },
     {
@@ -935,7 +1074,7 @@ function buildRecommendedSequence(auth) {
       title: 'Prepare Land & Building Documents & Approvals',
       subtitle: 'Execute registered lease or land deed',
       duration: 'Typical: 5 - 10 days',
-      agency: auth.planningAuthority,
+      agency: auth.planningAuthority || 'Town Planning & Industrial Dev Corp',
       description: 'Ensure industrial zoning conformity, verify clear title or registered lease, and prepare architectural drawings.',
       icon: 'FileCheck2',
       status: 'Pre-Establishment',
@@ -943,21 +1082,21 @@ function buildRecommendedSequence(auth) {
     },
     {
       step: 3,
-      title: 'Apply for Pollution Consent (CTE / CTO)',
-      subtitle: 'Consent to Establish applicability',
+      title: isTG ? 'Apply for Pollution Consent (CFE / CFO)' : 'Apply for Pollution Consent (CTE / CTO)',
+      subtitle: isTG ? 'Consent for Establishment (CFE) applicability' : 'Consent to Establish applicability',
       duration: 'Typical: 30 - 45 days',
-      agency: auth.pollutionAuthority,
-      description: 'Verify pollution category (Red/Orange/Green/White) with Pollution Control Board before initiating civil foundation work.',
+      agency: auth.pollutionAuthority || 'State Pollution Control Board',
+      description: `Verify pollution category (Red/Orange/Green/White) with ${auth.pollutionAuthorityShort || 'Pollution Control Board'} before initiating civil foundation work.`,
       icon: 'ShieldAlert',
       status: 'Pre-Establishment',
       badgeColor: 'blue'
     },
     {
       step: 4,
-      title: 'Apply for Factory License (DISH Inspection)',
+      title: factorySubtitle,
       subtitle: 'Factories Act applicability check',
       duration: 'Typical: 20 - 30 days',
-      agency: auth.factoryAuthority,
+      agency: auth.factoryAuthority || 'Department of Factories',
       description: 'If employing 10+ workers with power, review machinery HP specifications and safety layout under state Factory Rules.',
       icon: 'Factory',
       status: 'Pre-Operation',
@@ -968,7 +1107,7 @@ function buildRecommendedSequence(auth) {
       title: 'Obtain Fire Safety Approval & Utility Energization',
       subtitle: 'Industrial power and fire safety',
       duration: 'Typical: 15 - 25 days',
-      agency: `${auth.fireAuthority} & ${auth.powerAuthority}`,
+      agency: `${auth.fireAuthority || 'State Fire Services'} & ${auth.powerAuthority || 'Electricity DISCOM'}`,
       description: 'Submit power demand requirements to the distribution company and confirm NBC fire safety requirements.',
       icon: 'Flame',
       status: 'Pre-Operation',

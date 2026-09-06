@@ -87,9 +87,12 @@ export const RequirementsView = ({
   const calculatedComplianceCount = 4;
   const actionableCount = dependencyGraph?.actionableCount ?? calculatedApprovalsCount;
 
-  // Check if an application exists for an approval
-  const getAppStatusForApproval = (appId) => {
-    const userApp = userApplications.find(a => a.approvalId === appId || a.approval === appId);
+  // Check if an application exists for an approval scoped to current state
+  const getAppStatusForApproval = (appId, appName) => {
+    const userApp = userApplications.find(a => 
+      (!a.state || a.state === state) && 
+      (a.approvalId === appId || a.approval === appId || (appName && a.approval === appName))
+    );
     return userApp ? userApp.status : "NOT STARTED";
   };
 
@@ -380,7 +383,7 @@ export const RequirementsView = ({
                   key={approval.id}
                   approval={approval}
                   onViewDetails={(app) => setSelectedApprovalModal(app)}
-                  userAppStatus={getAppStatusForApproval(approval.id)}
+                  userAppStatus={getAppStatusForApproval(approval.id, approval.name)}
                 />
               ))}
             </div>

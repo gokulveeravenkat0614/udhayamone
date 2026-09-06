@@ -265,6 +265,7 @@ demoReqs.documents.forEach(doc => {
 // TEST SUITE 11: NAVIGATION FLOW - DIRECT LANDING ON REQUIRED APPROVALS LIST
 console.log("\n▶ TEST SUITE 11: Navigation Flow & Approvals Landing Verification");
 import fs from 'fs';
+import { getStatutoryReferenceCycles, getComplianceItems } from '../src/data/complianceData.js';
 const appJsxContent = fs.readFileSync('src/App.jsx', 'utf-8');
 const reqViewContent = fs.readFileSync('src/components/RequirementsView.jsx', 'utf-8');
 const businessFormContent = fs.readFileSync('src/components/BusinessForm.jsx', 'utf-8');
@@ -274,6 +275,69 @@ assert(reqViewContent.includes('id="required-approvals-section"'), "Requirements
 assert(appJsxContent.includes('required-approvals-section'), "App.jsx handleFindApprovals scrolls directly to 'required-approvals-section'");
 assert(reqViewContent.includes('Required Government Approvals, Licenses & NOCs'), "RequirementsView has prominent section heading for required government approvals");
 assert(!appJsxContent.includes("window.scrollTo({ top: 380"), "Bug fixed: Hardcoded top: 380 scroll landing on Eligibility Dashboard removed");
+
+// TEST SUITE 12: TELANGANA STATE DATA INTEGRITY & ZERO MAHARASHTRA LEAKAGE
+console.log("\n▶ TEST SUITE 12: Telangana State Data Integrity & Zero Maharashtra Leakage");
+assert(STATES_AND_DISTRICTS["Telangana"] !== undefined, "Telangana exists in state catalog");
+assert(STATES_AND_DISTRICTS["Telangana"].length === 33, `Telangana has all 33 official districts (${STATES_AND_DISTRICTS["Telangana"].length} found)`);
+const sampleTgDistricts = ["Hyderabad", "Medchal-Malkajgiri", "Rangareddy", "Sangareddy", "Warangal", "Karimnagar", "Nalgonda", "Bhadradri Kothagudem", "Nizamabad"];
+sampleTgDistricts.forEach(d => {
+  assert(STATES_AND_DISTRICTS["Telangana"].includes(d), `Telangana district '${d}' present`);
+});
+
+const tgHydReqs = getRequirements("Telangana", "Hyderabad", "Manufacturing");
+assert(tgHydReqs.state === "Telangana", "Scenario state is Telangana");
+assert(tgHydReqs.district === "Hyderabad", "Scenario district is Hyderabad");
+
+const bannedMhKeywords = ["Maharashtra", "MPCB", "DISH", "PMRDA", "MSEDCL", "MIDC Bhosari"];
+tgHydReqs.approvals.forEach(app => {
+  bannedMhKeywords.forEach(keyword => {
+    assert(!app.department.includes(keyword), `Approval '${app.name}' department does NOT contain '${keyword}'`);
+    assert(!app.authority.includes(keyword), `Approval '${app.name}' authority does NOT contain '${keyword}'`);
+    assert(!app.officialSource.includes("Maharashtra"), `Approval '${app.name}' officialSource does NOT mention Maharashtra`);
+  });
+});
+
+const tgPollution = tgHydReqs.approvals.find(a => a.id === 'app-pollution');
+assert(tgPollution.department.includes("TSPCB") || tgPollution.department.includes("Telangana State Pollution Control Board"), "Telangana Pollution approval maps to TSPCB");
+
+const tgFactory = tgHydReqs.approvals.find(a => a.id === 'app-factory');
+assert(tgFactory.department.includes("Department of Factories") && tgFactory.department.includes("Telangana"), "Telangana Factory License maps to Department of Factories, Telangana");
+
+const tgFire = tgHydReqs.approvals.find(a => a.id === 'app-fire');
+assert(tgFire.department.includes("TS-Fire") || tgFire.department.includes("Telangana State Disaster Response"), "Telangana Fire Safety maps to TS-Fire");
+
+const tgBuilding = tgHydReqs.approvals.find(a => a.id === 'app-building');
+assert(tgBuilding.department.includes("HMDA") && tgBuilding.department.includes("TS-bPASS"), "Hyderabad Building Approval maps to HMDA / TS-bPASS / TSIIC");
+
+const tgPower = tgHydReqs.approvals.find(a => a.id === 'app-electricity');
+assert(tgPower.department.includes("TGSPDCL") || tgPower.department.includes("Southern Power Distribution"), "Hyderabad Power maps to TGSPDCL");
+
+const tgWarangalReqs = getRequirements("Telangana", "Warangal", "Manufacturing");
+const tgWarangalPower = tgWarangalReqs.approvals.find(a => a.id === 'app-electricity');
+assert(tgWarangalPower.department.includes("TGNPDCL") || tgWarangalPower.department.includes("Northern Power Distribution"), "Warangal Power maps to Northern DISCOM (TGNPDCL)");
+const tgWarangalBuilding = tgWarangalReqs.approvals.find(a => a.id === 'app-building');
+assert(tgWarangalBuilding.department.includes("DTCP"), "Warangal Building maps to DTCP / TS-bPASS");
+
+assert(!tgHydReqs.nextSteps[3].title.includes("DISH"), "Telangana next steps step 4 title does NOT contain DISH");
+assert(tgHydReqs.nextSteps[3].agency.includes("Department of Factories"), "Telangana next steps step 4 agency is Department of Factories");
+assert(tgHydReqs.nextSteps[2].agency.includes("TSPCB"), "Telangana next steps step 3 agency is TSPCB");
+
+const tgCycles = getStatutoryReferenceCycles("Telangana");
+tgCycles.forEach(c => {
+  bannedMhKeywords.forEach(keyword => {
+    assert(!c.authority.includes(keyword), `Statutory cycle '${c.title}' authority does NOT contain '${keyword}'`);
+  });
+});
+assert(tgCycles.some(c => c.authority.includes("TSPCB")), "Telangana statutory cycles include TSPCB");
+assert(tgCycles.some(c => c.authority.includes("Department of Factories")), "Telangana statutory cycles include Department of Factories, Telangana");
+
+const tgItems = getComplianceItems("Telangana");
+tgItems.forEach(item => {
+  bannedMhKeywords.forEach(keyword => {
+    assert(!item.authority.includes(keyword), `Compliance item '${item.title}' authority does NOT contain '${keyword}'`);
+  });
+});
 
 console.log("\n=======================================================");
 console.log(`🏁 TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);

@@ -12,10 +12,10 @@ import {
 import { 
   getStoredComplianceItems, 
   saveStoredComplianceItems, 
-  STATUTORY_REFERENCE_CYCLES 
+  getStatutoryReferenceCycles 
 } from '../data/complianceData';
 
-export const ComplianceSection = () => {
+export const ComplianceSection = ({ selectedState = 'Maharashtra' }) => {
   const [items, setItems] = useState(() => getStoredComplianceItems());
   const [showAddModal, setShowAddModal] = useState(false);
   const [nameInput, setNameInput] = useState('');
@@ -261,7 +261,7 @@ export const ComplianceSection = () => {
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-          {STATUTORY_REFERENCE_CYCLES.map((ref, idx) => (
+          {getStatutoryReferenceCycles(selectedState).map((ref, idx) => (
             <div key={idx} className="p-4 rounded-2xl bg-white border border-slate-200 text-xs space-y-1.5">
               <div className="font-bold text-slate-900">{ref.title}</div>
               <div className="text-slate-600">
@@ -322,7 +322,7 @@ export const ComplianceSection = () => {
                 <label className="block font-bold text-slate-700 mb-1">Concerned Authority (Optional)</label>
                 <input 
                   type="text" 
-                  placeholder="e.g. Directorate of Industrial Safety & Health (DISH)"
+                  placeholder={selectedState === 'Telangana' ? 'e.g. Department of Factories, Telangana' : 'e.g. Directorate of Industrial Safety & Health (DISH)'}
                   value={authorityInput}
                   onChange={(e) => setAuthorityInput(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-brand-600 outline-hidden font-medium"

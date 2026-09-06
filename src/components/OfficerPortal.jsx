@@ -116,7 +116,7 @@ export const OfficerPortal = ({ applications, onUpdateApplication }) => {
               <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
               <span>Government Officer Review Desk</span>
               <span className="text-amber-400/50">•</span>
-              <span>DISH / Single-Window Clearance Cell</span>
+              <span>Single-Window Clearance Cell</span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
@@ -131,7 +131,7 @@ export const OfficerPortal = ({ applications, onUpdateApplication }) => {
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/15 text-right self-start md:self-auto shrink-0">
             <div className="text-xs text-blue-200">Logged Officer</div>
             <div className="text-sm font-bold text-white">Er. Shailesh Patil, Deputy Director</div>
-            <div className="text-[11px] text-amber-300">DISH Pune Division</div>
+            <div className="text-[11px] text-amber-300">State Industrial Clearances Directorate</div>
           </div>
         </div>
 

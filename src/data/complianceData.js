@@ -52,6 +52,40 @@ export const STATUTORY_REFERENCE_CYCLES = [
   }
 ];
 
+export const TELANGANA_STATUTORY_CYCLES = [
+  { 
+    title: "Annual Factory Licence Renewal (Form 2)", 
+    frequency: "Annual (mandated by 31st October under Telangana Factory Rules)", 
+    authority: "Department of Factories, Government of Telangana",
+    sourceUrl: "https://factories.telangana.gov.in"
+  },
+  { 
+    title: "Environmental Statement (Form V)", 
+    frequency: "Annual (mandated by 30th September under Environment Protection Rules)", 
+    authority: "Telangana State Pollution Control Board (TSPCB)",
+    sourceUrl: "https://tspcb.cpcb.gov.in"
+  },
+  { 
+    title: "Fire Safety Periodic Maintenance Audit", 
+    frequency: "Half-Yearly (Telangana Fire Service Act & NBC 2016)", 
+    authority: "Telangana State Disaster Response and Fire Services Department (TS-Fire)",
+    sourceUrl: "https://fire.telangana.gov.in"
+  },
+  { 
+    title: "Monthly GSTR-3B & TGST Return", 
+    frequency: "Monthly (20th of subsequent month)", 
+    authority: "Commercial Taxes Department, Telangana & GSTN",
+    sourceUrl: "https://tgct.gov.in"
+  }
+];
+
+export const getStatutoryReferenceCycles = (state = 'Maharashtra') => {
+  if (state === 'Telangana') {
+    return TELANGANA_STATUTORY_CYCLES;
+  }
+  return STATUTORY_REFERENCE_CYCLES;
+};
+
 // Reference catalog of standard compliance items for statutory monitoring
 export const COMPLIANCE_ITEMS = [
   {
@@ -159,4 +193,114 @@ export const CALENDAR_EVENTS = [
     mandatory: true
   }
 ];
+
+export const getComplianceItems = (state = 'Maharashtra') => {
+  if (state === 'Telangana') {
+    return [
+      {
+        id: "comp-tg-1",
+        title: "Factory License Renewal (Form 2)",
+        authority: "Department of Factories, Government of Telangana",
+        dueDate: "31st October",
+        frequency: "Annual",
+        status: "Upcoming",
+        description: "Annual renewal of factory operational license with safety verification under Telangana Factory Rules"
+      },
+      {
+        id: "comp-tg-2",
+        title: "Environmental Statement (Form V) Submission",
+        authority: "Telangana State Pollution Control Board (TSPCB)",
+        dueDate: "30th September",
+        frequency: "Annual",
+        status: "Upcoming",
+        description: "Statutory environmental audit report for pollution compliance under Water & Air Acts"
+      },
+      {
+        id: "comp-tg-3",
+        title: "Fire Safety Periodic Maintenance Audit",
+        authority: "Telangana State Disaster Response & Fire Services (TS-Fire)",
+        dueDate: "January & July",
+        frequency: "Bi-Annual",
+        status: "Upcoming",
+        description: "Inspection and maintenance certificate of fire equipment and suppression systems"
+      },
+      {
+        id: "comp-tg-4",
+        title: "Monthly GSTR-3B & TGST Summary Return",
+        authority: "Commercial Taxes Department, Telangana / GSTN",
+        dueDate: "20th of every month",
+        frequency: "Monthly",
+        status: "Upcoming",
+        description: "Self-assessed monthly summary return of outward and inward supplies"
+      },
+      {
+        id: "comp-tg-5",
+        title: "Annual Hazardous Waste Return (Form 4)",
+        authority: "Telangana State Pollution Control Board (TSPCB)",
+        dueDate: "30th June",
+        frequency: "Annual",
+        status: "Upcoming",
+        description: "Annual return regarding hazardous waste generation and handling"
+      },
+      {
+        id: "comp-tg-6",
+        title: "EPF & ESI Monthly Remittance",
+        authority: "EPFO / ESIC",
+        dueDate: "15th of every month",
+        frequency: "Monthly",
+        status: "Upcoming",
+        description: "Monthly statutory employee provident fund and insurance deposits"
+      }
+    ];
+  }
+  return COMPLIANCE_ITEMS;
+};
+
+export const getCalendarEvents = (state = 'Maharashtra') => {
+  if (state === 'Telangana') {
+    return [
+      {
+        id: "cal-tg-1",
+        title: "Monthly GSTR-3B & TGST Return Filing",
+        date: "20th of every month",
+        authority: "Commercial Taxes Dept, Telangana & GSTN",
+        category: "Taxation",
+        mandatory: true
+      },
+      {
+        id: "cal-tg-2",
+        title: "EPF & ESI Contribution Remittance",
+        date: "15th of every month",
+        authority: "EPFO / ESIC",
+        category: "Labour",
+        mandatory: true
+      },
+      {
+        id: "cal-tg-3",
+        title: "Environmental Statement (Form V)",
+        date: "30th September",
+        authority: "Telangana State Pollution Control Board (TSPCB)",
+        category: "Environment",
+        mandatory: true
+      },
+      {
+        id: "cal-tg-4",
+        title: "Factory License Renewal (Form 2)",
+        date: "31st October",
+        authority: "Department of Factories, Telangana",
+        category: "Industrial",
+        mandatory: true
+      },
+      {
+        id: "cal-tg-5",
+        title: "Fire Safety Periodic Audit",
+        date: "31st January & 31st July",
+        authority: "TS-Fire Services",
+        category: "Safety",
+        mandatory: true
+      }
+    ];
+  }
+  return CALENDAR_EVENTS;
+};
 

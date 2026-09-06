@@ -141,8 +141,70 @@ export const INITIAL_APPLICATIONS = [
     ],
     submittedDocs: [],
     certificateNumber: null
+  },
+  {
+    id: "TG-10250",
+    applicant: "Telangana Precision Engineering Pvt. Ltd.",
+    promoter: "K. V. Rao",
+    contactEmail: "contact@tgprecision.in",
+    contactPhone: "+91 94401 23456",
+    state: "Telangana",
+    district: "Medchal-Malkajgiri",
+    location: "Plot No. 88, TSIIC Industrial Park, Genome Valley, Medchal-Malkajgiri, Telangana - 500078",
+    industry: "Manufacturing",
+    approval: "Factory / Industrial License",
+    department: "Department of Factories, Government of Telangana",
+    submissionDate: "2026-08-15",
+    status: "Under Review",
+    currentStageIndex: 2,
+    requiredAction: "Department reviewing machinery safety layout & structural stability certificate under Telangana Factories Rules",
+    officerNotes: "Drawings verified by Inspector of Factories Medchal circle. Forwarded for joint inspection.",
+    stages: [
+      { name: "Application Submitted", date: "15 Aug 2026", done: true, remarks: "Dossier uploaded via TS-iPASS single-window" },
+      { name: "Document Verification", date: "19 Aug 2026", done: true, remarks: "Verified by Department of Factories Scrutiny Officer" },
+      { name: "Department Review", date: "25 Aug 2026", done: true, remarks: "Technical scrutiny in progress" },
+      { name: "Site Inspection", date: "Scheduled 08 Sep 2026", done: false, active: true, remarks: "Inspector of Factories assigned" },
+      { name: "Approval & Grant of License", date: "Pending", done: false, remarks: "Digital Certificate release upon inspection report" }
+    ],
+    submittedDocs: [
+      { name: "Building Layout / Site Plan", file: "tg_factory_layout.pdf", status: "Verified" },
+      { name: "Machinery Details & HP Rating", file: "machinery_load_schedule.pdf", status: "Verified" },
+      { name: "Form 1 (Notice of Occupation)", file: "tg_form_1.pdf", status: "Verified" }
+    ],
+    certificateNumber: null
+  },
+  {
+    id: "TG-10251",
+    applicant: "Telangana Precision Engineering Pvt. Ltd.",
+    promoter: "K. V. Rao",
+    contactEmail: "contact@tgprecision.in",
+    contactPhone: "+91 94401 23456",
+    state: "Telangana",
+    district: "Medchal-Malkajgiri",
+    location: "Plot No. 88, TSIIC Industrial Park, Genome Valley, Medchal-Malkajgiri, Telangana - 500078",
+    industry: "Manufacturing",
+    approval: "Pollution Control Consent (CFE / CFO)",
+    department: "Telangana State Pollution Control Board (TSPCB)",
+    submissionDate: "2026-07-22",
+    status: "Approved",
+    currentStageIndex: 4,
+    requiredAction: "Clearance Granted. Download digitally signed CFE certificate.",
+    officerNotes: "Orange category consent granted under TS-iPASS deemed approval provisions.",
+    stages: [
+      { name: "Application Submitted", date: "22 Jul 2026", done: true, remarks: "Online application submitted via TS-iPASS / TSPCB OCMMS" },
+      { name: "Document Verification", date: "25 Jul 2026", done: true, remarks: "Environmental audit and ETP drawings verified" },
+      { name: "Department Review", date: "04 Aug 2026", done: true, remarks: "TSPCB Regional Officer scrutiny complete" },
+      { name: "Site Inspection", date: "11 Aug 2026", done: true, remarks: "Site inspection satisfactory" },
+      { name: "Approval & Grant of License", date: "18 Aug 2026", done: true, remarks: "CFE Order issued digitally via TS-iPASS" }
+    ],
+    submittedDocs: [],
+    certificateNumber: "TSPCB/CFE/RO-MDL/2026/4102-C"
   }
 ];
+
+export const getInitialApplicationsForState = (state = 'Maharashtra') => {
+  return INITIAL_APPLICATIONS.filter(app => !app.state || app.state === state);
+};
 
 export const getStoredApplications = () => {
   try {

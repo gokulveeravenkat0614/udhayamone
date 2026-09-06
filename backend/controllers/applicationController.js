@@ -33,6 +33,18 @@ function createInitialDemoApplications(userId = '64f1a2b3c4d5e6f7a8b9c0d1') {
     builtUpArea: 400
   });
 
+  const telanganaEval = ruleEngine.evaluateEligibilityAndDependencies({
+    state: 'Telangana',
+    district: 'Hyderabad',
+    industry: 'Manufacturing',
+    entityType: 'Private Limited Company',
+    investment: 2.5,
+    turnover: 12.0,
+    employeeCount: 25,
+    powerRequired: 75,
+    builtUpArea: 1500
+  });
+
   const puneDocs = ruleEngine.getDocumentRequirements({}).map(d => ({
     ...d,
     status: 'NOT UPLOADED',
@@ -41,6 +53,13 @@ function createInitialDemoApplications(userId = '64f1a2b3c4d5e6f7a8b9c0d1') {
   }));
 
   const bengaluruDocs = ruleEngine.getDocumentRequirements({}).map(d => ({
+    ...d,
+    status: 'NOT UPLOADED',
+    fileName: null,
+    fileSize: null
+  }));
+
+  const telanganaDocs = ruleEngine.getDocumentRequirements({}).map(d => ({
     ...d,
     status: 'NOT UPLOADED',
     fileName: null,
@@ -117,6 +136,41 @@ function createInitialDemoApplications(userId = '64f1a2b3c4d5e6f7a8b9c0d1') {
         { event: 'Requirements Evaluated', date: new Date('2026-06-02'), status: 'Completed', remarks: 'IT clearances confirmed' }
       ],
       createdAt: new Date('2026-06-01')
+    },
+    {
+      _id: '64f1a2b3c4d5e6f7a8b9a003',
+      applicationId: 'TG-10250',
+      userId: userId.toString(),
+      applicantName: 'Telangana Advanced Systems Pvt. Ltd.',
+      promoter: 'K. Rajeshwar Rao',
+      contactEmail: 'contact@telanganasys.in',
+      contactPhone: '+91 94401 23456',
+      state: 'Telangana',
+      district: 'Hyderabad',
+      industry: 'Manufacturing',
+      businessProfile: {
+        entityType: 'Private Limited Company',
+        investment: 2.5,
+        turnover: 12.0,
+        employeeCount: 25,
+        powerRequired: 75,
+        builtUpArea: 1500,
+        usesHazardousChemicals: false,
+        isExportOriented: false
+      },
+      msmeClassification: telanganaEval.msmeClassification,
+      pollutionClassification: telanganaEval.pollutionClassification,
+      status: 'In Progress',
+      progressPercentage: 40,
+      approvals: telanganaEval.approvals,
+      approvalSequence: telanganaEval.nextSteps,
+      dependencyGraph: telanganaEval.dependencyGraph,
+      documents: telanganaDocs,
+      timeline: [
+        { event: 'Application Created', date: new Date('2026-08-10'), status: 'Completed', remarks: 'Registered via TS-iPASS Single-Window' },
+        { event: 'Requirements Evaluated', date: new Date('2026-08-10'), status: 'Completed', remarks: '5 statutory clearances identified' }
+      ],
+      createdAt: new Date('2026-08-10')
     }
   ];
 }
@@ -200,7 +254,16 @@ async function createApplication(req, res) {
       fileSize: null
     }));
 
-    const stateCode = (state || 'IN').slice(0, 2).toUpperCase();
+    const stateCodeMap = {
+      Telangana: 'TG',
+      Maharashtra: 'MH',
+      Karnataka: 'KA',
+      Gujarat: 'GJ',
+      'Tamil Nadu': 'TN',
+      'Andhra Pradesh': 'AP',
+      Delhi: 'DL'
+    };
+    const stateCode = stateCodeMap[state] || (state || 'IN').slice(0, 2).toUpperCase();
     const uniqueAppId = `${stateCode}-${Math.floor(10000 + Math.random() * 90000)}`;
 
     const initialTimeline = [

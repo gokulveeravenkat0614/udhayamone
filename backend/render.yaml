@@ -2,7 +2,7 @@ services:
   - type: web
     name: udyamone-backend
     runtime: node
-    buildCommand: npm ci
+    buildCommand: npm ci && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:

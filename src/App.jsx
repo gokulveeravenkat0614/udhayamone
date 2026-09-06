@@ -305,16 +305,30 @@ export default function App() {
       return;
     }
 
-    const newId = `MH-${Math.floor(10000 + Math.random() * 90000)}`;
+    const statePrefixMap = {
+      Telangana: 'TG',
+      Maharashtra: 'MH',
+      Karnataka: 'KA',
+      Gujarat: 'GJ',
+      'Tamil Nadu': 'TN',
+      'Andhra Pradesh': 'AP',
+      Delhi: 'DL'
+    };
+    const statePrefix = statePrefixMap[selectedState] || (selectedState || 'IN').slice(0, 2).toUpperCase();
+    const newId = `${statePrefix}-${Math.floor(10000 + Math.random() * 90000)}`;
+    const industrialZone = selectedState === 'Telangana' 
+      ? 'TSIIC Industrial Park' 
+      : (selectedState === 'Maharashtra' ? (selectedDistrict === 'Pune' ? 'MIDC Bhosari' : 'MIDC') : 'Industrial Estate');
+
     const newApp = {
       id: newId,
-      applicant: currentUser.name || "ABC Manufacturing Pvt. Ltd.",
-      promoter: currentUser.name || "Vikramaditya Sharma",
+      applicant: currentUser.name || (selectedState === 'Telangana' ? "Telangana Precision Engineering Pvt. Ltd." : "ABC Manufacturing Pvt. Ltd."),
+      promoter: currentUser.name || (selectedState === 'Telangana' ? "K. V. Rao" : "Vikramaditya Sharma"),
       contactEmail: currentUser.email || "contact@abcmfg.in",
       contactPhone: currentUser.mobile || "+91 98201 44521",
       state: selectedState,
       district: selectedDistrict,
-      location: `Plot No. 42, MIDC Bhosari, ${selectedDistrict}, ${selectedState}`,
+      location: `Plot No. 42, ${industrialZone}, ${selectedDistrict}, ${selectedState}`,
       industry: selectedIndustry,
       approval: approval.name,
       department: approval.department,
@@ -477,7 +491,7 @@ export default function App() {
         {/* 8. COMPLIANCE VIEW */}
         {currentRoute.name === 'compliance' && (
           <div className="py-4">
-            <ComplianceSection />
+            <ComplianceSection selectedState={selectedState} />
           </div>
         )}
 
@@ -525,6 +539,7 @@ export default function App() {
         {currentRoute.name === 'home' && (
           <>
             <Hero
+              selectedState={selectedState}
               onGetStarted={() => {
                 const el = document.getElementById('requirements-wizard');
                 el?.scrollIntoView({ behavior: 'smooth' });

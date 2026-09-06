@@ -47,11 +47,11 @@ export const Footer = ({ onNavigate }) => {
               Statutory Approvals
             </h4>
             <ul className="space-y-2 text-slate-400">
-              <li><a href="#requirements-wizard" className="hover:text-white transition-colors">Factory / Industrial License (DISH)</a></li>
-              <li><a href="#requirements-wizard" className="hover:text-white transition-colors">Pollution Consent CTE / CTO (MPCB)</a></li>
-              <li><a href="#requirements-wizard" className="hover:text-white transition-colors">Fire Safety / Fire NOC (MahaFire)</a></li>
-              <li><a href="#requirements-wizard" className="hover:text-white transition-colors">AutoDCR Building Sanction (PMRDA)</a></li>
-              <li><a href="#requirements-wizard" className="hover:text-white transition-colors">Industrial Power Release (MSEDCL)</a></li>
+              <li><a href="#requirements-wizard" className="hover:text-white transition-colors">Factory / Industrial License</a></li>
+              <li><a href="#requirements-wizard" className="hover:text-white transition-colors">Pollution Consent (CFE / CTE / CTO)</a></li>
+              <li><a href="#requirements-wizard" className="hover:text-white transition-colors">Fire Safety / Fire NOC Clearance</a></li>
+              <li><a href="#requirements-wizard" className="hover:text-white transition-colors">Building Blueprint & Sanction Approval</a></li>
+              <li><a href="#requirements-wizard" className="hover:text-white transition-colors">Industrial Power Sanction (HT / LT)</a></li>
             </ul>
           </div>
 
@@ -85,7 +85,7 @@ export const Footer = ({ onNavigate }) => {
               </div>
               <div className="flex items-center space-x-2">
                 <MapPin className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>Udyam Bhavan, Pune / Mumbai</span>
+                <span>Udyam Bhavan, National Single-Window Cell</span>
               </div>
             </div>
 

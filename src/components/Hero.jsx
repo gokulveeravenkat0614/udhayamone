@@ -6,7 +6,27 @@ import {
   Info
 } from 'lucide-react';
 
-export const Hero = ({ onGetStarted, onExploreServices, onSelectPreset }) => {
+export const Hero = ({ onGetStarted, onExploreServices, onSelectPreset, selectedState = 'Maharashtra' }) => {
+  const isTG = selectedState === 'Telangana';
+  const isMH = selectedState === 'Maharashtra';
+
+  const previewFactoryDept = isTG 
+    ? 'Department of Factories, Government of Telangana' 
+    : isMH 
+    ? 'Directorate of Industrial Safety & Health (DISH)' 
+    : 'State Directorate of Factories';
+
+  const previewPollutionDept = isTG 
+    ? 'Telangana State Pollution Control Board (TSPCB)' 
+    : isMH 
+    ? 'Maharashtra Pollution Control Board (MPCB)' 
+    : 'State Pollution Control Board (SPCB)';
+
+  const previewFireDept = isTG 
+    ? 'Telangana State Disaster Response and Fire Services (TS-Fire)' 
+    : isMH 
+    ? 'PMRDA Fire Department / MahaFire' 
+    : 'State Fire & Emergency Services';
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-blue-50/50 via-white to-slate-50 pt-8 pb-16 lg:pt-14 lg:pb-24 border-b border-slate-200/60">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -39,8 +59,15 @@ export const Hero = ({ onGetStarted, onExploreServices, onSelectPreset }) => {
             {/* Quick Preset Chip */}
             <div className="p-3 bg-white rounded-2xl border border-blue-100 shadow-2xs flex flex-wrap items-center gap-2 justify-center lg:justify-start text-xs text-slate-600">
               <span className="font-semibold text-slate-900 flex items-center">
-                <Info className="w-3.5 h-3.5 text-brand-600 mr-1" /> Quick Scenario:
+                <Info className="w-3.5 h-3.5 text-brand-600 mr-1" /> Quick Scenarios:
               </span>
+              <button
+                onClick={() => onSelectPreset("Telangana", "Hyderabad", "Information Technology")}
+                className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-medium border border-emerald-200 transition-colors flex items-center space-x-1 cursor-pointer"
+              >
+                <span>Telangana • Hyderabad • IT</span>
+                <ChevronRight className="w-3 h-3 text-emerald-600" />
+              </button>
               <button
                 onClick={() => onSelectPreset("Maharashtra", "Pune", "Manufacturing")}
                 className="px-2.5 py-1 rounded-lg bg-brand-50 text-brand-800 hover:bg-brand-100 font-medium border border-brand-200 transition-colors flex items-center space-x-1 cursor-pointer"
@@ -112,7 +139,7 @@ export const Hero = ({ onGetStarted, onExploreServices, onSelectPreset }) => {
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
                   <div>
                     <div className="text-xs font-bold text-slate-800">Factory Licence</div>
-                    <div className="text-[10px] text-slate-500">Directorate of Industrial Safety & Health (DISH)</div>
+                    <div className="text-[10px] text-slate-500">{previewFactoryDept}</div>
                   </div>
                   <span className="text-[10px] font-extrabold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                     Check Applicability
@@ -121,8 +148,8 @@ export const Hero = ({ onGetStarted, onExploreServices, onSelectPreset }) => {
 
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
                   <div>
-                    <div className="text-xs font-bold text-slate-800">Pollution Control Consent (CTE)</div>
-                    <div className="text-[10px] text-slate-500">Maharashtra Pollution Control Board (MPCB)</div>
+                    <div className="text-xs font-bold text-slate-800">Pollution Control Consent (CTE / CFO)</div>
+                    <div className="text-[10px] text-slate-500">{previewPollutionDept}</div>
                   </div>
                   <span className="text-[10px] font-extrabold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                     Check Applicability
@@ -132,7 +159,7 @@ export const Hero = ({ onGetStarted, onExploreServices, onSelectPreset }) => {
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
                   <div>
                     <div className="text-xs font-bold text-slate-800">Fire Safety No Objection Certificate</div>
-                    <div className="text-[10px] text-slate-500">PMRDA Fire Department / MahaFire</div>
+                    <div className="text-[10px] text-slate-500">{previewFireDept}</div>
                   </div>
                   <span className="text-[10px] font-extrabold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                     Check Applicability

@@ -9,7 +9,7 @@ export const INDUSTRIES = [
     pollutionCategory: "Orange / Red",
     description: "General engineering, fabrication, metal works, machinery, and equipment manufacturing.",
     typicalApprovalsCount: 5,
-    sampleKey: "Factory License, MPCB Consent, Fire NOC"
+    sampleKey: "Factory License, Pollution Consent, Fire NOC"
   },
   {
     id: "Food Processing",
@@ -49,7 +49,7 @@ export const INDUSTRIES = [
     pollutionCategory: "Red",
     description: "Formulations, active pharmaceutical ingredients (APIs), medical devices, and bio-pharma.",
     typicalApprovalsCount: 7,
-    sampleKey: "Drug Mfg License, MPCB CTE, GMP Certification"
+    sampleKey: "Drug Mfg License, Pollution Consent, GMP Certification"
   },
   {
     id: "Automobile",

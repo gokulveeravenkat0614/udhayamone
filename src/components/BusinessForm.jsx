@@ -70,6 +70,8 @@ export const BusinessForm = ({
     if (!newDistricts.includes(selectedDistrict)) {
       if (newState === "Maharashtra") {
         setSelectedDistrict("Pune");
+      } else if (newState === "Telangana") {
+        setSelectedDistrict("Hyderabad");
       } else {
         setSelectedDistrict(newDistricts[0] || "");
       }
@@ -262,7 +264,7 @@ export const BusinessForm = ({
                 </div>
               </div>
               <p className="text-[11px] text-slate-500">
-                {selectedState === "Maharashtra" ? "High detail available: 20+ Maharashtra districts" : "Pan-India industrial single window"}
+                {selectedState === "Telangana" ? "TS-iPASS integrated: All 33 Telangana industrial districts" : selectedState === "Maharashtra" ? "High detail available: 20+ Maharashtra districts" : "Pan-India industrial single window"}
               </p>
             </div>
 
