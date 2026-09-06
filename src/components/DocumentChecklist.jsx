@@ -13,20 +13,9 @@ import {
   X,
   Database,
   ShieldCheck,
-  ShieldAlert,
-  ChevronDown,
-  ChevronUp,
-  Plus,
-  RotateCcw
+  ShieldAlert
 } from 'lucide-react';
 import { applicationApi } from '../services/api';
-import { 
-  validateUploadedDocumentAgainstDatabase,
-  getStoredDatabaseRecords,
-  addDatabaseRecord,
-  removeDatabaseRecord,
-  resetDatabaseRecordsToDefault
-} from '../services/databaseService';
 
 const formatDisplayFileSize = (fileSize) => {
   if (!fileSize) return '';
@@ -62,8 +51,6 @@ export const DocumentChecklist = ({
   const [toastType, setToastType] = useState('info'); // 'info', 'success', 'error'
   const fileInputRef = useRef(null);
   const [activeUploadDocId, setActiveUploadDocId] = useState(null);
-  const [showDbRegistry, setShowDbRegistry] = useState(false);
-  const [dbRecords, setDbRecords] = useState(() => getStoredDatabaseRecords());
 
   // Load documents from backend API when applicationId is provided
   const loadDocuments = useCallback(async () => {
@@ -140,11 +127,6 @@ export const DocumentChecklist = ({
     }
   }
 
-  // Refresh database records state
-  const refreshDbRecords = () => {
-    setDbRecords(getStoredDatabaseRecords());
-  };
-
   const totalCount = docsList.length;
   const approvedCount = docsList.filter(d => d.status === 'APPROVED' || d.status === 'VERIFIED').length;
   const rejectedCount = docsList.filter(d => d.status === 'REJECTED').length;
@@ -161,16 +143,9 @@ export const DocumentChecklist = ({
 
   /**
    * DATABASE VALIDATION FOR EVERY UPLOADED DOCUMENT:
-   * 1. Get uploaded document ID, document type, application/user ID.
-   * 2. Check database for corresponding document record.
-   * 3. If matching record exists:
-   *    - Set status = APPROVED
-   *    - Show status badge: APPROVED
-   * 4. If no matching record exists:
-   *    - Set status = REJECTED
-   *    - Show status badge: REJECTED
-   *
-   * Core rule: Never mark document as APPROVED only because user uploaded file.
+   * Upload sends file directly to backend API which stores file and creates records in MongoDB.
+   * Real matching MongoDB document record exists -> APPROVED.
+   * Un-uploaded -> NOT UPLOADED.
    */
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -184,93 +159,47 @@ export const DocumentChecklist = ({
       }
 
       const targetDoc = docsList.find(d => d.id === activeUploadDocId || d.documentId === activeUploadDocId);
-
-      // Step 1: Get uploaded document ID, document type, application/user ID
       const documentId = targetDoc?.id || targetDoc?.documentId || activeUploadDocId;
       const documentType = targetDoc?.name || targetDoc?.documentType || targetDoc?.category || "Unknown";
-      const userOrAppId = applicationId || userId || "demo-user";
 
-      let uploadSuccess = false;
-      let newDocState = null;
-
-      // 1. Try real backend API if applicationId is available
-      if (applicationId) {
-        try {
-          const res = await applicationApi.uploadDocument(applicationId, {
-            documentId,
-            docId: documentId,
-            documentType,
-            docName: documentType,
-            name: documentType,
-            category: targetDoc?.category || '',
-            whyRequired: targetDoc?.whyRequired || '',
-            file,
-            fileName: file.name,
-            fileSize: formattedSize
-          });
-
-          if (res && res.success) {
-            uploadSuccess = true;
-            await loadDocuments();
-            setToastType('success');
-            setSessionToast(`APPROVED: "${file.name}" saved and verified against database record for ${documentType}.`);
-            setTimeout(() => setSessionToast(''), 4500);
-            if (e.target) e.target.value = '';
-            return;
-          }
-        } catch (err) {
-          console.warn('Backend upload API note (falling back to database service):', err);
-        }
+      if (!applicationId) {
+        setToastType('error');
+        setSessionToast('Please select or submit an application before uploading documents.');
+        setTimeout(() => setSessionToast(''), 4500);
+        if (e.target) e.target.value = '';
+        return;
       }
 
-      // 2. Database service registration & verification fallback
-      if (!uploadSuccess) {
-        addDatabaseRecord({
+      try {
+        const res = await applicationApi.uploadDocument(applicationId, {
           documentId,
+          docId: documentId,
           documentType,
+          docName: documentType,
           name: documentType,
-          category: targetDoc?.category || 'General',
-          status: 'APPROVED',
-          registeredAuthority: 'Single-Window Clearance Portal',
-          verificationSource: 'Official Document Database Record'
+          category: targetDoc?.category || '',
+          whyRequired: targetDoc?.whyRequired || '',
+          file,
+          fileName: file.name,
+          fileSize: formattedSize
         });
 
-        newDocState = {
-          ...targetDoc,
-          id: documentId,
-          documentId,
-          status: 'APPROVED',
-          fileName: file.name,
-          fileSize: formattedSize,
-          fileType: file.type || "document",
-          uploadedAt: new Date().toLocaleTimeString(),
-          databaseRecordExists: true,
-          verified: true,
-          validationMessage: `Database record created for "${documentType}". Document APPROVED.`,
-          registeredAuthority: 'Single-Window Clearance Portal'
-        };
-      }
-
-      const updated = docsList.map(doc => {
-        if (doc.id === activeUploadDocId || doc.documentId === activeUploadDocId) {
-          return newDocState;
+        if (res && res.success) {
+          await loadDocuments();
+          setToastType('success');
+          setSessionToast(`APPROVED: "${file.name}" saved and verified against database record for ${documentType}.`);
+          setTimeout(() => setSessionToast(''), 4500);
+        } else {
+          setToastType('error');
+          setSessionToast(res?.message || `Failed to verify document for ${documentType}.`);
+          setTimeout(() => setSessionToast(''), 4500);
         }
-        return doc;
-      });
-
-      setDocsList(updated);
-      if (onDocumentsUpdated) {
-        onDocumentsUpdated(updated);
-      }
-
-      if (newDocState.status === 'APPROVED') {
-        setToastType('success');
-        setSessionToast(`APPROVED: "${file.name}" verified against database record for ${documentType}.`);
-      } else {
+      } catch (err) {
+        console.error('Backend upload API error:', err);
         setToastType('error');
-        setSessionToast(`REJECTED: No corresponding document record exists in database for "${documentType}".`);
+        setSessionToast(err.message || `Upload failed for ${documentType}.`);
+        setTimeout(() => setSessionToast(''), 4500);
       }
-      setTimeout(() => setSessionToast(''), 4500);
     }
 
     // Reset input so same file can be re-selected if replacing
@@ -319,38 +248,6 @@ export const DocumentChecklist = ({
     setToastType('info');
     setSessionToast(`Removed file for "${targetDoc?.name || 'document'}". Status reset to NOT UPLOADED.`);
     setTimeout(() => setSessionToast(''), 3000);
-  };
-
-  // Toggle or add record in database registry for dynamic testing
-  const handleToggleDbRecord = (doc) => {
-    const isCurrentlyInDb = dbRecords.some(r => r.documentId === doc.id);
-    if (isCurrentlyInDb) {
-      removeDatabaseRecord(doc.id);
-      refreshDbRecords();
-      setToastType('info');
-      setSessionToast(`Removed "${doc.name}" (${doc.id}) from database registry.`);
-    } else {
-      addDatabaseRecord({
-        documentId: doc.id,
-        documentType: doc.name,
-        name: doc.name,
-        category: doc.category || 'General',
-        status: 'APPROVED',
-        registeredAuthority: 'Statutory Registry'
-      });
-      refreshDbRecords();
-      setToastType('success');
-      setSessionToast(`Added "${doc.name}" (${doc.id}) to database registry.`);
-    }
-    setTimeout(() => setSessionToast(''), 3500);
-  };
-
-  const handleResetDbRegistry = () => {
-    resetDatabaseRecordsToDefault();
-    refreshDbRecords();
-    setToastType('info');
-    setSessionToast('Database document registry reset to default statutory records.');
-    setTimeout(() => setSessionToast(''), 3500);
   };
 
   // Download checklist text
@@ -449,16 +346,6 @@ export const DocumentChecklist = ({
 
           <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
             <button
-              onClick={() => setShowDbRegistry(!showDbRegistry)}
-              className="px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs border border-indigo-200 transition-colors flex items-center space-x-1.5 cursor-pointer"
-              title="Inspect or manage database records"
-            >
-              <Database className="w-3.5 h-3.5 text-indigo-600" />
-              <span>DB Registry ({dbRecords.length})</span>
-              {showDbRegistry ? <ChevronUp className="w-3 h-3 ml-0.5" /> : <ChevronDown className="w-3 h-3 ml-0.5" />}
-            </button>
-
-            <button
               onClick={handleDownloadChecklist}
               className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 transition-colors flex items-center space-x-1.5 cursor-pointer"
             >
@@ -467,63 +354,6 @@ export const DocumentChecklist = ({
             </button>
           </div>
         </div>
-
-        {/* Optional Collapsible Database Document Registry Inspector */}
-        {showDbRegistry && (
-          <div className="mt-5 p-5 rounded-2xl bg-indigo-50/70 border border-indigo-200 animate-fadeIn space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center space-x-2">
-                <Database className="w-4 h-4 text-indigo-700" />
-                <h4 className="text-xs font-black text-indigo-950 uppercase tracking-wider">
-                  Database Records Registry (Active Database Verification Table)
-                </h4>
-              </div>
-              <button
-                onClick={handleResetDbRegistry}
-                className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-white text-indigo-700 hover:bg-indigo-100 text-[11px] font-bold border border-indigo-200 cursor-pointer self-start sm:self-auto"
-              >
-                <RotateCcw className="w-3 h-3" />
-                <span>Reset to Default Records</span>
-              </button>
-            </div>
-            
-            <p className="text-[11px] text-indigo-900 leading-relaxed">
-              When an uploaded document matches a record below, it is automatically marked <strong className="text-emerald-700 font-black">APPROVED</strong>. If no matching record exists in this table, it is marked <strong className="text-rose-700 font-black">REJECTED</strong>.
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
-              {docsList.map(doc => {
-                const inDb = dbRecords.some(r => r.documentId === doc.id);
-                return (
-                  <div 
-                    key={doc.id}
-                    className={`p-3 rounded-xl border flex items-center justify-between text-xs transition-colors ${
-                      inDb 
-                        ? 'bg-white border-emerald-200 shadow-2xs' 
-                        : 'bg-slate-50/80 border-slate-200 opacity-75'
-                    }`}
-                  >
-                    <div className="min-w-0 pr-2">
-                      <div className="font-bold text-slate-900 truncate text-[11px]">{doc.name}</div>
-                      <div className="text-[10px] text-slate-500 font-mono">{doc.id}</div>
-                    </div>
-                    <button
-                      onClick={() => handleToggleDbRecord(doc)}
-                      className={`px-2 py-1 rounded-lg text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
-                        inDb
-                          ? 'bg-emerald-100 hover:bg-rose-100 text-emerald-800 hover:text-rose-700'
-                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                      }`}
-                      title={inDb ? 'Click to remove record (will cause rejection on upload)' : 'Click to register record in database'}
-                    >
-                      {inDb ? '✓ In DB (Active)' : '+ Add to DB'}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Dynamic Summary Cards */}
         <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">

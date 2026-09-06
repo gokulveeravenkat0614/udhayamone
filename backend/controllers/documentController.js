@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const DocumentRecord = require('../models/DocumentRecord');
+const Document = require('../models/Document');
 
 // Pre-seeded database records for verified statutory documents
 const SEED_DOCUMENT_RECORDS = [
@@ -99,35 +100,71 @@ async function validateDocument(req, res) {
 
     let matchingRecord = null;
 
-    // 1. If MongoDB is connected (readyState === 1), query DocumentRecord collection
+    // 1. If MongoDB is connected (readyState === 1), query DocumentRecord & Document collections
     if (mongoose.connection.readyState === 1) {
       const query = {
         $or: [
           ...(documentId ? [{ documentId }] : []),
-          ...(documentType ? [{ documentType }] : [])
+          ...(documentType ? [{ documentType }, { name: documentType }] : [])
         ]
       };
 
-      // If user/app specific records exist, prefer them, or fallback to general master record
       const candidates = await DocumentRecord.find(query);
       if (candidates && candidates.length > 0) {
-        matchingRecord = candidates.find(c =>
-          (userId && c.userId === userId) ||
-          (applicationId && c.applicationId === applicationId)
-        ) || candidates[0];
+        if (userId || applicationId) {
+          matchingRecord = candidates.find(c => {
+            const userMatches = !c.userId || (userId && c.userId.toString() === userId.toString());
+            const appMatches = !c.applicationId || (applicationId && c.applicationId.toString() === applicationId.toString());
+            return userMatches && appMatches;
+          }) || null;
+        } else {
+          matchingRecord = candidates.find(c => !c.userId && !c.applicationId) || candidates[0];
+        }
+      }
+
+      // Check Document collection for specific application and user
+      if (!matchingRecord && (userId || applicationId) && documentId) {
+        const docQuery = {
+          documentId,
+          ...(userId && mongoose.Types.ObjectId.isValid(userId) ? { userId } : {}),
+          ...(applicationId ? { applicationId } : {}),
+          status: 'APPROVED'
+        };
+        const doc = await Document.findOne(docQuery);
+        if (doc) {
+          matchingRecord = {
+            documentId: doc.documentId,
+            documentType: doc.documentType,
+            name: doc.documentType,
+            category: doc.category,
+            status: 'APPROVED',
+            metadata: { fileName: doc.fileName, fileSize: doc.fileSize }
+          };
+        }
       }
     } else {
       // 2. Fallback in-memory store
-      matchingRecord = memoryRecords.find(rec =>
-        (documentId && rec.documentId === documentId) ||
-        (documentType && rec.documentType.toLowerCase() === documentType.toLowerCase()) ||
-        (documentType && rec.name.toLowerCase() === documentType.toLowerCase())
-      ) || null;
+      matchingRecord = memoryRecords.find(rec => {
+        const idMatches = (documentId && rec.documentId === documentId);
+        const typeMatches = (documentType && (
+          rec.documentType.toLowerCase() === documentType.toLowerCase() ||
+          (rec.name && rec.name.toLowerCase() === documentType.toLowerCase())
+        ));
+        const reqMatches = idMatches || typeMatches;
+        if (!reqMatches) return false;
+
+        if (userId || applicationId) {
+          const userMatches = !rec.userId || (userId && rec.userId.toString() === userId.toString());
+          const appMatches = !rec.applicationId || (applicationId && rec.applicationId.toString() === applicationId.toString());
+          return userMatches && appMatches;
+        }
+        return true;
+      }) || null;
     }
 
     // 3. Status determination based on database record existence:
-    // Database record exists -> APPROVED
-    // Database record does not exist -> REJECTED
+    // Real matching database record exists -> APPROVED
+    // No matching database record exists -> REJECTED
     const recordExists = Boolean(matchingRecord && matchingRecord.status === 'APPROVED');
     const status = recordExists ? 'APPROVED' : 'REJECTED';
     const badge = status;
