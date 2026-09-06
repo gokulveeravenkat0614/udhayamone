@@ -28,6 +28,25 @@ import {
   resetDatabaseRecordsToDefault
 } from '../services/databaseService';
 
+const formatDisplayFileSize = (fileSize) => {
+  if (!fileSize) return '';
+  if (typeof fileSize === 'number') {
+    return fileSize < 1024 * 1024 
+      ? `${(fileSize / 1024).toFixed(1)} KB` 
+      : `${(fileSize / (1024 * 1024)).toFixed(1)} MB`;
+  }
+  if (typeof fileSize === 'string') {
+    if (!isNaN(Number(fileSize)) && !fileSize.includes(' ') && !fileSize.toLowerCase().includes('b')) {
+      const num = Number(fileSize);
+      return num < 1024 * 1024 
+        ? `${(num / 1024).toFixed(1)} KB` 
+        : `${(num / (1024 * 1024)).toFixed(1)} MB`;
+    }
+    return fileSize;
+  }
+  return '';
+};
+
 export const DocumentChecklist = ({ 
   documents = [], 
   onDocumentsUpdated,
@@ -157,14 +176,20 @@ export const DocumentChecklist = ({
             fileSize: formattedSize
           });
 
-          if (res && res.success && res.document) {
-            newDocState = {
-              ...targetDoc,
-              ...res.document,
-              id: documentId,
-              documentId
-            };
+          if (res && res.success) {
             uploadSuccess = true;
+            await loadDocuments();
+            const isDocApproved = res.document?.status === 'APPROVED';
+            if (isDocApproved) {
+              setToastType('success');
+              setSessionToast(`APPROVED: "${file.name}" verified against database record for ${documentType}.`);
+            } else {
+              setToastType('error');
+              setSessionToast(`REJECTED: No corresponding document record exists in database for "${documentType}".`);
+            }
+            setTimeout(() => setSessionToast(''), 4500);
+            if (e.target) e.target.value = '';
+            return;
           }
         } catch (err) {
           console.warn('Backend upload API note (falling back to local DB validator):', err);
@@ -232,6 +257,11 @@ export const DocumentChecklist = ({
     if (applicationId) {
       try {
         await applicationApi.deleteDocument(applicationId, docId);
+        await loadDocuments();
+        setToastType('info');
+        setSessionToast(`Removed file for "${targetDoc?.name || 'document'}". Status reset to NOT UPLOADED.`);
+        setTimeout(() => setSessionToast(''), 3000);
+        return;
       } catch (err) {
         console.warn('Backend delete API error:', err);
       }
@@ -298,7 +328,7 @@ export const DocumentChecklist = ({
   // Download checklist text
   const handleDownloadChecklist = () => {
     const text = docsList.map(d => 
-      `Requirement: ${d.name}\nCategory: ${d.category || 'General'}\nWhy required: ${d.whyRequired}\nStatus: ${d.status}\n${d.fileName ? `Uploaded file: ${d.fileName} (${d.fileSize})` : 'Not uploaded'}`
+      `Requirement: ${d.name}\nCategory: ${d.category || 'General'}\nWhy required: ${d.whyRequired}\nStatus: ${d.status}\n${d.fileName ? `Uploaded file: ${d.fileName}${d.fileSize ? ` (${formatDisplayFileSize(d.fileSize)})` : ''}` : 'Not uploaded'}`
     ).join('\n\n--------------------------------------------\n\n');
 
     const header = `UDYAMONE INDUSTRIAL DOCUMENT PREPARATION CHECKLIST\nGenerated on: ${new Date().toLocaleDateString()}\nStatus: ${approvedCount} Approved, ${rejectedCount} Rejected, ${notUploadedCount} Not Uploaded\nCore Rule: Approved ONLY when matching document record exists in database\n=========================================================\n\n${text}\n\n* Note: Uploaded files are strictly verified against database document records.`;
@@ -613,7 +643,7 @@ export const DocumentChecklist = ({
         {!loading && !error && (
           <div className="mt-6 space-y-4">
             {filteredDocs.map((doc) => {
-              const hasFile = Boolean(doc.fileName);
+              const hasFile = Boolean(doc.fileName && doc.status !== 'NOT UPLOADED');
               const isApproved = doc.status === 'APPROVED' || doc.status === 'VERIFIED';
               const isRejected = doc.status === 'REJECTED';
 
@@ -668,8 +698,8 @@ export const DocumentChecklist = ({
                         {doc.whyRequired}
                       </div>
 
-                      {/* File Name & File Size (Shown when file is uploaded) */}
-                      {hasFile && (
+                      {/* File Name & File Size (Shown strictly when real file is uploaded) */}
+                      {hasFile && doc.fileName && (
                         <div className="mt-2.5 ml-7 flex flex-wrap items-center gap-2 pt-1">
                           <div className={`inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl border text-xs font-semibold ${
                             isApproved 
@@ -678,14 +708,16 @@ export const DocumentChecklist = ({
                           }`}>
                             <FileText className={`w-4 h-4 shrink-0 ${isApproved ? 'text-emerald-600' : 'text-rose-600'}`} />
                             <span className="truncate max-w-[240px] font-bold">{doc.fileName}</span>
-                            <span className="font-normal opacity-80">• {doc.fileSize}</span>
+                            {doc.fileSize && (
+                              <span className="font-normal opacity-80">• {formatDisplayFileSize(doc.fileSize)}</span>
+                            )}
                           </div>
 
-                          {/* Database record confirmation badge */}
+                          {/* Database record confirmation badge: only shown when actual database record confirms verification */}
                           <div className="inline-flex items-center space-x-1 text-[11px] font-semibold text-slate-500">
                             <Database className="w-3 h-3 text-slate-400" />
                             <span>
-                              {isApproved 
+                              {isApproved && (doc.verified || doc.databaseRecordExists)
                                 ? 'Record verified in database' 
                                 : 'No matching database record'}
                             </span>

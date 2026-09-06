@@ -543,19 +543,23 @@ async function uploadApplicationDocument(req, res) {
     const category = body.category || '';
     const whyRequired = body.whyRequired || '';
 
-    // File name and size from uploaded file or body
-    let fileName = body.fileName || (req.file ? req.file.originalname : (req.files && req.files[0] ? req.files[0].originalname : null));
-    let fileSize = body.fileSize;
-    if (!fileSize && req.file) {
-      fileSize = req.file.size < 1024 * 1024 
-        ? `${(req.file.size / 1024).toFixed(1)} KB` 
-        : `${(req.file.size / (1024 * 1024)).toFixed(1)} MB`;
-    }
-    if (!fileName) {
-      fileName = `${documentId || 'document'}_uploaded.pdf`;
-    }
-    if (!fileSize) {
-      fileSize = '1.2 MB';
+    // File name and size from uploaded file or body (strictly real data, never fake/hardcoded fallbacks)
+    const uploadedFile = req.file || (req.files && req.files[0] ? req.files[0] : null);
+    let fileName = body.fileName || (uploadedFile ? uploadedFile.originalname : null);
+    let fileSize = body.fileSize || null;
+    if (!fileSize && uploadedFile && uploadedFile.size) {
+      fileSize = uploadedFile.size < 1024 * 1024 
+        ? `${(uploadedFile.size / 1024).toFixed(1)} KB` 
+        : `${(uploadedFile.size / (1024 * 1024)).toFixed(1)} MB`;
+    } else if (fileSize && typeof fileSize === 'number') {
+      fileSize = fileSize < 1024 * 1024
+        ? `${(fileSize / 1024).toFixed(1)} KB`
+        : `${(fileSize / (1024 * 1024)).toFixed(1)} MB`;
+    } else if (fileSize && typeof fileSize === 'string' && !isNaN(Number(fileSize))) {
+      const numBytes = Number(fileSize);
+      fileSize = numBytes < 1024 * 1024
+        ? `${(numBytes / 1024).toFixed(1)} KB`
+        : `${(numBytes / (1024 * 1024)).toFixed(1)} MB`;
     }
 
     if (!documentId) {

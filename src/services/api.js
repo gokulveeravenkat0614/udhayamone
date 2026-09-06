@@ -126,51 +126,77 @@ export const applicationApi = {
   getDocuments: (id) =>
     request(`/applications/${encodeURIComponent(id)}/documents`),
   uploadDocument: (id, payload) => {
+    const applicationId = encodeURIComponent(id);
+
     if (payload instanceof FormData) {
-      return request(`/applications/${encodeURIComponent(id)}/documents`, {
+      return request(`/applications/${applicationId}/documents`, {
         method: 'POST',
-        body: payload
-      });
-    }
-    const { docId, documentId, docName, documentType, name, category, whyRequired, file, fileName, fileSize } = payload || {};
-    
-    // If an actual File object was provided, construct FormData
-    if (file && typeof file !== 'string' && file.name) {
-      const form = new FormData();
-      form.append('documentId', documentId || docId);
-      form.append('docId', documentId || docId);
-      if (documentType || docName || name) {
-        form.append('documentType', documentType || docName || name);
-        form.append('docName', documentType || docName || name);
-      }
-      if (category) form.append('category', category);
-      if (whyRequired) form.append('whyRequired', whyRequired);
-      form.append('fileName', file.name);
-      const sizeStr = file.size < 1024 * 1024 
-        ? `${(file.size / 1024).toFixed(1)} KB` 
-        : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
-      form.append('fileSize', sizeStr);
-      form.append('document', file);
-      return request(`/applications/${encodeURIComponent(id)}/documents`, {
-        method: 'POST',
-        body: form
+        body: payload,
       });
     }
 
-    // Otherwise send as JSON payload
-    return request(`/applications/${encodeURIComponent(id)}/documents`, {
+    const {
+      docId,
+      documentId,
+      docName,
+      documentType,
+      name,
+      category,
+      whyRequired,
+      file,
+    } = payload || {};
+
+    if (typeof File !== 'undefined' && file instanceof File) {
+      const form = new FormData();
+
+      const resolvedDocumentId = documentId || docId;
+      const resolvedDocumentType = documentType || docName || name;
+
+      if (resolvedDocumentId) {
+        form.append('documentId', resolvedDocumentId);
+        form.append('docId', resolvedDocumentId);
+      }
+
+      if (resolvedDocumentType) {
+        form.append('documentType', resolvedDocumentType);
+        form.append('docName', resolvedDocumentType);
+      }
+
+      if (category) {
+        form.append('category', category);
+      }
+
+      if (whyRequired) {
+        form.append('whyRequired', whyRequired);
+      }
+
+      form.append('fileName', file.name);
+      form.append('fileSize', String(file.size));
+      form.append('document', file);
+
+      return request(`/applications/${applicationId}/documents`, {
+        method: 'POST',
+        body: form,
+      });
+    }
+
+    const body = {
+      documentId: documentId || docId || null,
+      docId: docId || documentId || null,
+      documentType: documentType || docName || name || null,
+      docName: docName || documentType || name || null,
+      category: category || null,
+      whyRequired: whyRequired || null,
+      fileName: payload?.fileName || null,
+      fileSize: payload?.fileSize || null,
+    };
+
+    return request(`/applications/${applicationId}/documents`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        documentId: documentId || docId,
-        docId: documentId || docId,
-        documentType: documentType || docName || name,
-        docName: documentType || docName || name,
-        category,
-        whyRequired,
-        fileName: fileName || (file ? file.name : null),
-        fileSize: fileSize || '1.2 MB'
-      })
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
     });
   },
   deleteDocument: (id, docId) =>
