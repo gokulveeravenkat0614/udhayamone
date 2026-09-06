@@ -124,6 +124,28 @@ function createInitialDemoApplications(userId = '64f1a2b3c4d5e6f7a8b9c0d1') {
 // In-memory fallback applications store
 let memoryApplications = createInitialDemoApplications('64f1a2b3c4d5e6f7a8b9c0d1');
 
+async function ensureDemoApplications() {
+  if (mongoose.connection.readyState === 1) {
+    try {
+      const User = require('../models/User');
+      const demoUser = await User.findOne({ email: 'demo@udyamone.test' });
+      if (!demoUser) return;
+
+      const existing = await Application.findOne({ applicationId: 'MH-10245' });
+      if (!existing) {
+        const demoApps = createInitialDemoApplications(demoUser._id);
+        for (const app of demoApps) {
+          const { _id, ...appData } = app;
+          await Application.create(appData);
+        }
+        console.log('MongoDB: Seeded demo applications MH-10245 and KA-10299 for demo user.');
+      }
+    } catch (err) {
+      console.warn('Could not seed demo applications into MongoDB:', err.message);
+    }
+  }
+}
+
 function calculateProgress(app) {
   let score = 20; // Profile created
   if (app.approvals && app.approvals.length > 0) score += 20; // Evaluated
@@ -409,13 +431,17 @@ async function getApplicationDocuments(req, res) {
     let uploadedDocs = [];
 
     if (mongoose.connection.readyState === 1) {
-      const query = mongoose.Types.ObjectId.isValid(appId) ? { _id: appId } : { applicationId: appId };
+      const query = mongoose.Types.ObjectId.isValid(appId) 
+        ? { $or: [{ _id: appId }, { applicationId: appId }] } 
+        : { applicationId: appId };
       app = await Application.findOne(query);
 
       if (!app) {
+        console.warn(`[Document API] Application not found: ${appId}`);
         return res.status(404).json({ success: false, message: 'Application not found' });
       }
       if (app.userId.toString() !== userId.toString()) {
+        console.warn(`[Document API] Ownership mismatch for application ${appId}: app.userId=${app.userId}, authUserId=${userId}`);
         return res.status(403).json({ success: false, message: 'You do not have permission to access this application' });
       }
 
@@ -430,9 +456,11 @@ async function getApplicationDocuments(req, res) {
       app = memoryApplications.find(a => a._id === appId || a.applicationId === appId);
 
       if (!app) {
+        console.warn(`[Document API] In-memory application not found: ${appId}`);
         return res.status(404).json({ success: false, message: 'Application not found' });
       }
       if (app.userId.toString() !== userId.toString()) {
+        console.warn(`[Document API] In-memory ownership mismatch for application ${appId}: app.userId=${app.userId}, authUserId=${userId}`);
         return res.status(403).json({ success: false, message: 'You do not have permission to access this application' });
       }
 
@@ -878,6 +906,7 @@ module.exports = {
   uploadApplicationDocument,
   deleteApplicationDocument,
   submitApplication,
+  ensureDemoApplications,
   memoryApplications,
   memoryDocuments
 };

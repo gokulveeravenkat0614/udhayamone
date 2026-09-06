@@ -1,14 +1,75 @@
-const API_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) || 'http://localhost:5000/api';
+export const getApiBaseUrl = () => {
+  let base = '';
+  if (typeof import.meta !== 'undefined') {
+    if (import.meta.env?.VITE_API_BASE_URL) base = import.meta.env.VITE_API_BASE_URL;
+    else if (import.meta.env?.VITE_API_URL) base = import.meta.env.VITE_API_URL;
+  }
+  if (!base && typeof process !== 'undefined') {
+    if (process.env?.VITE_API_BASE_URL) base = process.env.VITE_API_BASE_URL;
+    else if (process.env?.VITE_API_URL) base = process.env.VITE_API_URL;
+  }
+  if (!base && typeof window !== 'undefined' && window.location && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    // In production on remote host without explicit env var, use relative /api
+    base = '/api';
+  }
+  if (!base) {
+    base = 'http://localhost:5000/api';
+  }
+  return base.replace(/\/+$/, '');
+};
 
-async function request(path, options={}) {
+export function buildApiUrl(path) {
+  const base = getApiBaseUrl();
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  if (base.endsWith('/api') && cleanPath.startsWith('/api/')) {
+    return `${base}${cleanPath.slice(4)}`;
+  }
+  return `${base}${cleanPath}`;
+}
+
+async function request(path, options = {}) {
   const token = typeof localStorage !== 'undefined' ? localStorage.getItem('udyamone_token') : null;
   const headers = { ...(options.headers || {}) };
   if (token) headers.Authorization = `Bearer ${token}`;
-  const response = await fetch(`${API_URL}${path}`, { ...options, headers });
+  
+  const url = buildApiUrl(path);
+  let response;
+  try {
+    response = await fetch(url, { ...options, headers });
+  } catch (netErr) {
+    const error = new Error('Unable to connect to server. Please try again.');
+    error.name = 'NetworkError';
+    error.status = 0;
+    error.originalError = netErr;
+    throw error;
+  }
+
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.message || 'Request failed');
+  if (!response.ok) {
+    const error = new Error(data.message || `Request failed with status ${response.status}`);
+    error.status = response.status;
+    error.response = { status: response.status, data };
+    throw error;
+  }
   return data;
 }
+
+export const api = {
+  get: (path, options = {}) => request(path, { ...options, method: 'GET' }),
+  post: (path, body, options = {}) => request(path, { 
+    ...options, 
+    method: 'POST', 
+    headers: body instanceof FormData ? options.headers : { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    body: body instanceof FormData ? body : JSON.stringify(body) 
+  }),
+  put: (path, body, options = {}) => request(path, { 
+    ...options, 
+    method: 'PUT', 
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    body: JSON.stringify(body) 
+  }),
+  delete: (path, options = {}) => request(path, { ...options, method: 'DELETE' }),
+};
 
 export function getStoredToken() {
   return typeof localStorage !== 'undefined' ? localStorage.getItem('udyamone_token') : null;

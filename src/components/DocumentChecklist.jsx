@@ -66,31 +66,59 @@ export const DocumentChecklist = ({
 
   // Load documents from backend API when applicationId is provided
   const loadDocuments = useCallback(async () => {
-    if (!applicationId) return;
+    if (!applicationId) {
+      if (documents && documents.length > 0) {
+        setDocsList(documents);
+        setError(null);
+      } else {
+        setDocsList([]);
+        setError("Application ID is missing.");
+      }
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
       const res = await applicationApi.getDocuments(applicationId);
-      if (res && res.success && Array.isArray(res.documents)) {
-        setDocsList(res.documents);
-        if (onDocumentsUpdated) {
-          onDocumentsUpdated(res.documents);
-        }
-      } else if (res && Array.isArray(res.documents)) {
-        setDocsList(res.documents);
-        if (onDocumentsUpdated) {
-          onDocumentsUpdated(res.documents);
-        }
+      const data = res?.data || res;
+
+      const realDocuments = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.documents)
+          ? data.documents
+          : [];
+
+      setDocsList(realDocuments);
+      setError(null);
+      if (onDocumentsUpdated) {
+        onDocumentsUpdated(realDocuments);
       }
     } catch (err) {
-      console.warn('API document load error:', err);
-      // As per Rule 18: Never load mock data when API fails!
+      console.error('Failed to load documents from backend API:', err);
       setDocsList([]);
-      setError("Unable to load documents. Please try again.");
+
+      // Section 14: Map HTTP status and network errors to clean messages
+      const status = err.status || err.response?.status;
+      let message = "Unable to load documents. Please try again.";
+
+      if (status === 401 || err.message?.includes('Authentication required') || err.message?.includes('token')) {
+        message = "Please log in again.";
+      } else if (status === 403 || err.message?.includes('permission')) {
+        message = "You do not have permission to access this application.";
+      } else if (status === 404 || err.message?.includes('not found')) {
+        message = "Application not found.";
+      } else if (status >= 500) {
+        message = "Unable to load documents. Server error.";
+      } else if (err.name === 'NetworkError' || err.name === 'TypeError' || err.message?.includes('connect') || err.message?.includes('fetch')) {
+        message = "Unable to connect to server. Please try again.";
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }
-  }, [applicationId, onDocumentsUpdated]);
+  }, [applicationId, documents, onDocumentsUpdated]);
 
   useEffect(() => {
     if (applicationId) {
@@ -618,7 +646,9 @@ export const DocumentChecklist = ({
               <AlertCircle className="w-6 h-6" />
             </div>
             <h4 className="text-sm font-bold text-slate-900">{error}</h4>
-            <p className="text-xs text-slate-600">Please try again.</p>
+            {!error.toLowerCase().includes('please') && (
+              <p className="text-xs text-slate-600">Please check your connection and try again.</p>
+            )}
             <button
               onClick={loadDocuments}
               className="px-4 py-2 rounded-xl bg-brand-700 text-white font-bold text-xs hover:bg-brand-800 transition-all cursor-pointer inline-flex items-center space-x-1.5"

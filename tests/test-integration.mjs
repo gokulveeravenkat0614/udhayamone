@@ -502,6 +502,27 @@ const server = app.listen(5098, async () => {
     const panAfterDelete = afterDeleteDocs.data.documents.find(d => d.documentId === 'doc-pan');
     assert(panAfterDelete && panAfterDelete.status === 'NOT UPLOADED' && panAfterDelete.fileName === null, "Document status successfully reset to NOT UPLOADED with null filename upon deletion");
 
+    // 4.21 Direct root route /applications/:id/documents without /api prefix works
+    const directRootDocs = await makeJsonRequest({
+      path: `/applications/${createdAppId}/documents`,
+      headers: { Authorization: `Bearer ${demoToken}` }
+    });
+    assert(directRootDocs.statusCode === 200 && Array.isArray(directRootDocs.data?.documents), "GET /applications/:id/documents works with and without /api prefix");
+
+    // 4.22 Non-existent application returns HTTP 404 with Application not found
+    const notFoundDocs = await makeJsonRequest({
+      path: `/api/applications/non-existent-app-99999/documents`,
+      headers: { Authorization: `Bearer ${demoToken}` }
+    });
+    assert(notFoundDocs.statusCode === 404, "GET /api/applications/:id/documents returns HTTP 404 when application does not exist");
+
+    // 4.23 Real document counts come strictly from database records without hardcoded numbers
+    const totalDocsCount = directRootDocs.data.documents.length;
+    const approvedDocsCount = directRootDocs.data.documents.filter(d => d.status === 'APPROVED').length;
+    const rejectedDocsCount = directRootDocs.data.documents.filter(d => d.status === 'REJECTED').length;
+    const notUploadedDocsCount = directRootDocs.data.documents.filter(d => d.status === 'NOT UPLOADED').length;
+    assert(totalDocsCount > 0 && approvedDocsCount === 0 && rejectedDocsCount === 1 && (approvedDocsCount + rejectedDocsCount + notUploadedDocsCount === totalDocsCount), "Document counts dynamically calculated from actual database records (zero fake uploaded documents)");
+
     server.close(() => {
       console.log("\n=======================================================");
       console.log(`🏁 INTEGRATION RESULTS: ${passed} PASSED, ${failed} FAILED`);
