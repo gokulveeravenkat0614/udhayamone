@@ -1,7 +1,7 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) || 'http://localhost:5000/api';
 
 async function request(path, options={}) {
-  const token = localStorage.getItem('udyamone_token');
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('udyamone_token') : null;
   const headers = { ...(options.headers || {}) };
   if (token) headers.Authorization = `Bearer ${token}`;
   const response = await fetch(`${API_URL}${path}`, { ...options, headers });
@@ -47,4 +47,25 @@ export const approvalApi = {
   getDependencies: (state, district, industry) =>
     request(`/approvals/dependencies?state=${encodeURIComponent(state || 'Maharashtra')}&district=${encodeURIComponent(district || 'Pune')}&industry=${encodeURIComponent(industry || 'Manufacturing')}`)
 };
+
+export const documentApi = {
+  validate: ({ documentId, documentType, applicationId, userId }) =>
+    request('/documents/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ documentId, documentType, applicationId, userId })
+    }),
+  getRecords: () => request('/documents/records'),
+  addRecord: (record) =>
+    request('/documents/records', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(record)
+    }),
+  deleteRecord: (id) =>
+    request(`/documents/records/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
+    })
+};
+
 

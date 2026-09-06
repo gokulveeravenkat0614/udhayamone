@@ -2,6 +2,7 @@ require('dotenv').config();
 const app = require('./app');
 const connectDB = require('./config/db');
 const { ensureDemoUsers } = require('./controllers/authController');
+const { ensureDemoDocumentRecords } = require('./controllers/documentController');
 
 const port = process.env.PORT || 5000;
 
@@ -9,6 +10,7 @@ const port = process.env.PORT || 5000;
   try {
     await connectDB();
     await ensureDemoUsers();
+    await ensureDemoDocumentRecords();
     console.log('MongoDB connected and demo users verified.');
   } catch (err) {
     // All authentication and verification data is MongoDB-backed. Starting

@@ -158,6 +158,107 @@ const server = app.listen(5098, async () => {
       }).on('error', reject);
     });
 
+    // Test 4: Document Approval Logic - Database Record Exists -> APPROVED
+    console.log("\n▶ TEST SUITE 3: Document Approval Database Validation Logic");
+    await new Promise((resolve, reject) => {
+      const docPayload = JSON.stringify({
+        documentId: 'doc-pan',
+        documentType: 'PAN Card / Business PAN',
+        applicationId: 'MH-10245',
+        userId: 'demo-user'
+      });
+      const req = http.request({
+        hostname: '127.0.0.1',
+        port: 5098,
+        path: '/api/documents/validate',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(docPayload)
+        }
+      }, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          const json = JSON.parse(data);
+          assert(json.success === true, "POST /api/documents/validate returned HTTP 200 with success:true");
+          assert(json.recordExists === true, "Matching record found in database for doc-pan");
+          assert(json.status === 'APPROVED', "Document with matching database record is marked APPROVED");
+          assert(json.badge === 'APPROVED', "Status badge for matching database record is APPROVED");
+          resolve();
+        });
+      });
+      req.on('error', reject);
+      req.write(docPayload);
+      req.end();
+    });
+
+    // Test 5: Document Approval Logic - Database Record DOES NOT Exist -> REJECTED
+    await new Promise((resolve, reject) => {
+      const docPayload = JSON.stringify({
+        documentId: 'doc-project',
+        documentType: 'Project Report',
+        applicationId: 'MH-10245',
+        userId: 'demo-user'
+      });
+      const req = http.request({
+        hostname: '127.0.0.1',
+        port: 5098,
+        path: '/api/documents/validate',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(docPayload)
+        }
+      }, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          const json = JSON.parse(data);
+          assert(json.success === true, "POST /api/documents/validate returned HTTP 200");
+          assert(json.recordExists === false, "No matching record in database for doc-project");
+          assert(json.status === 'REJECTED', "Document WITHOUT matching database record is marked REJECTED");
+          assert(json.badge === 'REJECTED', "Status badge for missing database record is REJECTED");
+          resolve();
+        });
+      });
+      req.on('error', reject);
+      req.write(docPayload);
+      req.end();
+    });
+
+    // Test 6: Core Rule - Never mark document as APPROVED only because file was uploaded
+    await new Promise((resolve, reject) => {
+      const arbitraryPayload = JSON.stringify({
+        documentId: 'doc-arbitrary-unregistered-file',
+        documentType: 'Arbitrary Random Document',
+        fileName: 'arbitrary_uploaded_document.pdf',
+        fileSize: '5.2 MB'
+      });
+      const req = http.request({
+        hostname: '127.0.0.1',
+        port: 5098,
+        path: '/api/documents/validate',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(arbitraryPayload)
+        }
+      }, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          const json = JSON.parse(data);
+          assert(json.recordExists === false, "Arbitrary uploaded file does NOT match database record");
+          assert(json.status === 'REJECTED', "Core Rule Enforced: Uploaded file without DB record is REJECTED, never APPROVED");
+          resolve();
+        });
+      });
+      req.on('error', reject);
+      req.write(arbitraryPayload);
+      req.end();
+    });
+
     server.close(() => {
       console.log("\n=======================================================");
       console.log(`🏁 INTEGRATION RESULTS: ${passed} PASSED, ${failed} FAILED`);

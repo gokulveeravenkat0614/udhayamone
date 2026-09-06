@@ -693,7 +693,7 @@ export function getDocumentRequirements(profile, isDefaultDemoScenario = false) 
       category: 'Business Identity',
       whyRequired: 'Used for applicable identity/tax/business processes where applicable.',
       mandatory: true,
-      status: isDefaultDemoScenario ? 'VERIFIED' : 'NOT UPLOADED',
+      status: isDefaultDemoScenario ? 'APPROVED' : 'NOT UPLOADED',
       file: isDefaultDemoScenario ? 'pan_card_incorporation.pdf' : null,
       fileName: isDefaultDemoScenario ? 'pan_card_incorporation.pdf' : null,
       fileSize: isDefaultDemoScenario ? '420 KB' : null
@@ -704,7 +704,7 @@ export function getDocumentRequirements(profile, isDefaultDemoScenario = false) 
       category: 'Signatory KYC',
       whyRequired: 'May be required for authorized signatory identity confirmation on applicable portals.',
       mandatory: true,
-      status: isDefaultDemoScenario ? 'VERIFIED' : 'NOT UPLOADED',
+      status: isDefaultDemoScenario ? 'APPROVED' : 'NOT UPLOADED',
       file: isDefaultDemoScenario ? 'promoter_aadhaar.pdf' : null,
       fileName: isDefaultDemoScenario ? 'promoter_aadhaar.pdf' : null,
       fileSize: isDefaultDemoScenario ? '680 KB' : null
@@ -715,7 +715,7 @@ export function getDocumentRequirements(profile, isDefaultDemoScenario = false) 
       category: 'Corporate Entity',
       whyRequired: 'Proof of legal establishment (Certificate of Incorporation, LLP Agreement, or Partnership Deed).',
       mandatory: true,
-      status: isDefaultDemoScenario ? 'VERIFIED' : 'NOT UPLOADED',
+      status: isDefaultDemoScenario ? 'APPROVED' : 'NOT UPLOADED',
       file: isDefaultDemoScenario ? 'mca_incorporation_cert.pdf' : null,
       fileName: isDefaultDemoScenario ? 'mca_incorporation_cert.pdf' : null,
       fileSize: isDefaultDemoScenario ? '1.2 MB' : null
@@ -726,7 +726,7 @@ export function getDocumentRequirements(profile, isDefaultDemoScenario = false) 
       category: 'Property & Land',
       whyRequired: 'May be needed to establish lawful possession of the premises for applicable approvals (e.g. Registered lease deed, 7/12 extract, or allotment letter).',
       mandatory: true,
-      status: isDefaultDemoScenario ? 'VERIFIED' : 'NOT UPLOADED',
+      status: isDefaultDemoScenario ? 'APPROVED' : 'NOT UPLOADED',
       file: isDefaultDemoScenario ? 'registered_lease_deed_midc.pdf' : null,
       fileName: isDefaultDemoScenario ? 'registered_lease_deed_midc.pdf' : null,
       fileSize: isDefaultDemoScenario ? '2.8 MB' : null
@@ -737,7 +737,7 @@ export function getDocumentRequirements(profile, isDefaultDemoScenario = false) 
       category: 'Engineering',
       whyRequired: 'May be required by planning, fire, and factory authorities to review structural safety, ventilation, and emergency exits.',
       mandatory: true,
-      status: isDefaultDemoScenario ? 'VERIFIED' : 'NOT UPLOADED',
+      status: isDefaultDemoScenario ? 'APPROVED' : 'NOT UPLOADED',
       file: isDefaultDemoScenario ? 'blueprint_layout_v3.pdf' : null,
       fileName: isDefaultDemoScenario ? 'blueprint_layout_v3.pdf' : null,
       fileSize: isDefaultDemoScenario ? '4.5 MB' : null
@@ -748,7 +748,7 @@ export function getDocumentRequirements(profile, isDefaultDemoScenario = false) 
       category: 'Technical Equipment',
       whyRequired: 'May be required to calculate electrical connected load (HP/kW) and assess industrial safety requirements.',
       mandatory: true,
-      status: isDefaultDemoScenario ? 'VERIFIED' : 'NOT UPLOADED',
+      status: isDefaultDemoScenario ? 'APPROVED' : 'NOT UPLOADED',
       file: isDefaultDemoScenario ? 'machinery_power_specs.pdf' : null,
       fileName: isDefaultDemoScenario ? 'machinery_power_specs.pdf' : null,
       fileSize: isDefaultDemoScenario ? '850 KB' : null
@@ -988,7 +988,7 @@ export function evaluateEligibilityAndDependencies(input = {}, userApplications 
   const dependencyGraph = buildDependencyGraph(applicableApprovals, userApplications);
   const nextSteps = buildRecommendedSequence(auth);
 
-  const readyDocumentsCount = documents.filter(d => d.status === 'VERIFIED' || d.status === 'UPLOADED').length;
+  const readyDocumentsCount = documents.filter(d => d.status === 'APPROVED' || d.status === 'VERIFIED' || d.status === 'UPLOADED').length;
 
   return {
     state: profile.state,

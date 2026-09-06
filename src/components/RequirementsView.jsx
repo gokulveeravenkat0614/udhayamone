@@ -421,6 +421,8 @@ export const RequirementsView = ({
         <DocumentChecklist 
           documents={documents} 
           onDocumentsUpdated={onDocumentsUpdated}
+          applicationId={userApplications?.[0]?.id || 'MH-10245'}
+          userId="demo-user"
         />
       )}
 

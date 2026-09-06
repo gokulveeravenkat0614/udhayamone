@@ -5,6 +5,7 @@ import { getRequirements } from '../src/data/requirementsData.js';
 import { COMPLIANCE_ITEMS, COMPLIANCE_SUMMARY, CALENDAR_EVENTS } from '../src/data/complianceData.js';
 import { SCHEMES_DATA } from '../src/data/schemesData.js';
 import { INITIAL_APPLICATIONS } from '../src/data/initialApplications.js';
+import { validateUploadedDocumentAgainstDatabase, INITIAL_DATABASE_DOCUMENT_RECORDS } from '../src/services/databaseService.js';
 
 let passed = 0;
 let failed = 0;
@@ -199,6 +200,67 @@ assert(factoryNode.phase === 4, "Factory License placed in Phase 4 (Pre-Operatio
 const buildingNode = demoReqs.dependencyGraph.nodes.find(n => n.id === "app-building");
 assert(buildingNode !== undefined, "Building approval node exists in dependency graph");
 assert(buildingNode.phase === 2, "Building approval placed in Phase 2 (Pre-Establishment)");
+
+// TEST SUITE 10: DOCUMENT APPROVAL LOGIC (MVP CORE RULES)
+console.log("\n▶ TEST SUITE 10: Document Approval Logic & Database Verification");
+assert(INITIAL_DATABASE_DOCUMENT_RECORDS.length === 6, `Database contains 6 registered statutory document records (${INITIAL_DATABASE_DOCUMENT_RECORDS.length} found)`);
+
+// 1. Matching database record -> APPROVED
+const approvedPan = await validateUploadedDocumentAgainstDatabase({
+  documentId: 'doc-pan',
+  documentType: 'PAN Card / Business PAN'
+});
+assert(approvedPan.recordExists === true, "Database record exists for 'doc-pan'");
+assert(approvedPan.status === 'APPROVED', "Document with matching database record is marked APPROVED");
+assert(approvedPan.badge === 'APPROVED', "Status badge for matching database record is APPROVED");
+
+const approvedReg = await validateUploadedDocumentAgainstDatabase({
+  documentId: 'doc-reg',
+  documentType: 'Business Registration Certificate'
+});
+assert(approvedReg.recordExists === true, "Database record exists for 'doc-reg'");
+assert(approvedReg.status === 'APPROVED', "Document 'doc-reg' status is APPROVED");
+assert(approvedReg.badge === 'APPROVED', "Status badge for 'doc-reg' is APPROVED");
+
+// 2. Missing database record -> REJECTED
+const rejectedProject = await validateUploadedDocumentAgainstDatabase({
+  documentId: 'doc-project',
+  documentType: 'Project Report'
+});
+assert(rejectedProject.recordExists === false, "Database record does NOT exist for 'doc-project'");
+assert(rejectedProject.status === 'REJECTED', "Document WITHOUT matching database record is marked REJECTED");
+assert(rejectedProject.badge === 'REJECTED', "Status badge for missing database record is REJECTED");
+
+const rejectedFire = await validateUploadedDocumentAgainstDatabase({
+  documentId: 'doc-fire',
+  documentType: 'Fire Safety Details'
+});
+assert(rejectedFire.recordExists === false, "Database record does NOT exist for 'doc-fire'");
+assert(rejectedFire.status === 'REJECTED', "Document 'doc-fire' status is REJECTED");
+assert(rejectedFire.badge === 'REJECTED', "Status badge for 'doc-fire' is REJECTED");
+
+// 3. Core Rule: Never mark document as APPROVED only because user uploaded file
+const arbitraryUpload = await validateUploadedDocumentAgainstDatabase({
+  documentId: 'doc-arbitrary-upload',
+  documentType: 'Custom Uploaded Blueprint',
+  fileName: 'my_uploaded_drawing.pdf',
+  fileSize: '4.2 MB'
+});
+assert(arbitraryUpload.recordExists === false, "Arbitrary uploaded file does not match database record");
+assert(arbitraryUpload.status === 'REJECTED', "Core Rule Enforced: Uploaded file without DB record is marked REJECTED (never marked APPROVED just because file was uploaded)");
+assert(arbitraryUpload.badge === 'REJECTED', "Badge is REJECTED");
+
+// 4. Document Card Attribute Verification
+demoReqs.documents.forEach(doc => {
+  assert(typeof doc.name === 'string' && doc.name.length > 0, `Card shows Document name for '${doc.id}'`);
+  assert(typeof doc.category === 'string' && doc.category.length > 0, `Card shows Category for '${doc.id}'`);
+  assert(typeof doc.whyRequired === 'string' && doc.whyRequired.length > 0, `Card shows Why required for '${doc.id}'`);
+  assert(doc.status === 'APPROVED' || doc.status === 'REJECTED' || doc.status === 'NOT UPLOADED', `Card shows Current status for '${doc.id}' (${doc.status})`);
+  if (doc.status === 'APPROVED') {
+    assert(doc.fileName !== null, `Card shows File name for approved '${doc.id}'`);
+    assert(doc.fileSize !== null, `Card shows File size for approved '${doc.id}'`);
+  }
+});
 
 console.log("\n=======================================================");
 console.log(`🏁 TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);
