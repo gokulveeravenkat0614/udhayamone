@@ -1,0 +1,11 @@
+// ADD at the end of src/services/api.js:
+
+export const assistantApi = {
+  chat: ({ message, sessionId, history, websiteContext }) =>
+    request('/assistant/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, sessionId, history, websiteContext })
+    }),
+  history: (sessionId) => request(`/assistant/history?sessionId=${encodeURIComponent(sessionId)}`)
+};

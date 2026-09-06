@@ -1,0 +1,10 @@
+// ADD import:
+import { AIAssistant } from './components/AIAssistant';
+
+// ADD inside the returned App JSX, before the final Footer or before the outer </div>:
+<AIAssistant
+  currentUser={currentUser}
+  selectedState={selectedState}
+  selectedDistrict={selectedDistrict}
+  selectedIndustry={selectedIndustry}
+/>

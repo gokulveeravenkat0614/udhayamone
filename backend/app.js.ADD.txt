@@ -1,0 +1,5 @@
+// ADD near your other route imports:
+const assistantRoutes = require('./routes/assistantRoutes');
+
+// ADD near your other API routes:
+app.use('/api/assistant', assistantRoutes);
