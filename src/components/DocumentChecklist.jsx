@@ -51,11 +51,12 @@ export const DocumentChecklist = ({
   documents = [], 
   onDocumentsUpdated,
   applicationId = null,
-  userId = 'demo-user'
+  userId = null
 }) => {
   const [docsList, setDocsList] = useState(documents);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [errorType, setErrorType] = useState(null); // 'not_found', 'network', 'auth'
   const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'approved', 'rejected', 'not_uploaded'
   const [sessionToast, setSessionToast] = useState('');
   const [toastType, setToastType] = useState('info'); // 'info', 'success', 'error'
@@ -67,13 +68,9 @@ export const DocumentChecklist = ({
   // Load documents from backend API when applicationId is provided
   const loadDocuments = useCallback(async () => {
     if (!applicationId) {
-      if (documents && documents.length > 0) {
-        setDocsList(documents);
-        setError(null);
-      } else {
-        setDocsList([]);
-        setError("Application ID is missing.");
-      }
+      setDocsList(documents || []);
+      setError(null);
+      setErrorType(null);
       setLoading(false);
       return;
     }
@@ -81,6 +78,7 @@ export const DocumentChecklist = ({
     try {
       setLoading(true);
       setError(null);
+      setErrorType(null);
       const res = await applicationApi.getDocuments(applicationId);
       const data = res?.data || res;
 
@@ -92,29 +90,36 @@ export const DocumentChecklist = ({
 
       setDocsList(realDocuments);
       setError(null);
+      setErrorType(null);
       if (onDocumentsUpdated) {
         onDocumentsUpdated(realDocuments);
       }
     } catch (err) {
       console.error('Failed to load documents from backend API:', err);
-      setDocsList([]);
 
-      // Section 14: Map HTTP status and network errors to clean messages
       const status = err.status || err.response?.status;
-      let message = "Unable to load documents. Please try again.";
+      const isAuth = status === 401 || err.message?.includes('Authentication required') || err.message?.includes('token') || err.message?.includes('expired');
+      const isAppNotFound = err.isApplicationNotFound || (status === 404 && err.response?.data?.message === 'Application not found');
 
-      if (status === 401 || err.message?.includes('Authentication required') || err.message?.includes('token')) {
-        message = "Please log in again.";
-      } else if (status === 403 || err.message?.includes('permission')) {
-        message = "You do not have permission to access this application.";
-      } else if (status === 404 || err.message?.includes('not found')) {
-        message = "Application not found.";
-      } else if (status >= 500) {
-        message = "Unable to load documents. Server error.";
-      } else if (err.name === 'NetworkError' || err.name === 'TypeError' || err.message?.includes('connect') || err.message?.includes('fetch')) {
-        message = "Unable to connect to server. Please try again.";
+      if (isAuth) {
+        setError("Session expired. Please log in again.");
+        setErrorType('auth');
+        setDocsList([]);
+      } else if (isAppNotFound) {
+        setError("Application not found.");
+        setErrorType('not_found');
+        setDocsList([]);
+      } else {
+        // Network errors, server 500, HTML 404 from static CDN, etc.
+        setError("Unable to connect to application service.");
+        setErrorType('network');
+        // Preserve evaluated documents if available
+        if (documents && documents.length > 0) {
+          setDocsList(documents);
+        } else {
+          setDocsList([]);
+        }
       }
-      setError(message);
     } finally {
       setLoading(false);
     }
@@ -634,7 +639,7 @@ export const DocumentChecklist = ({
         {loading && (
           <div className="mt-6 py-16 text-center bg-slate-50/50 rounded-2xl border border-slate-200">
             <RefreshCw className="w-8 h-8 text-brand-600 animate-spin mx-auto mb-3" />
-            <h4 className="text-sm font-bold text-slate-800">Loading documents...</h4>
+            <h4 className="text-sm font-bold text-slate-800">Loading application...</h4>
             <p className="text-xs text-slate-500 mt-1">Retrieving verified statutory records from database</p>
           </div>
         )}
@@ -646,16 +651,39 @@ export const DocumentChecklist = ({
               <AlertCircle className="w-6 h-6" />
             </div>
             <h4 className="text-sm font-bold text-slate-900">{error}</h4>
-            {!error.toLowerCase().includes('please') && (
-              <p className="text-xs text-slate-600">Please check your connection and try again.</p>
+            
+            {errorType === 'network' && (
+              <>
+                <p className="text-xs text-slate-600">Please check your connection and try again.</p>
+                <button
+                  onClick={loadDocuments}
+                  className="px-4 py-2 rounded-xl bg-brand-700 text-white font-bold text-xs hover:bg-brand-800 transition-all cursor-pointer inline-flex items-center space-x-1.5"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Retry</span>
+                </button>
+              </>
             )}
-            <button
-              onClick={loadDocuments}
-              className="px-4 py-2 rounded-xl bg-brand-700 text-white font-bold text-xs hover:bg-brand-800 transition-all cursor-pointer inline-flex items-center space-x-1.5"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Retry</span>
-            </button>
+
+            {errorType === 'auth' && (
+              <p className="text-xs text-slate-600">Session expired. Please log in again.</p>
+            )}
+
+            {errorType === 'not_found' && (
+              <p className="text-xs text-slate-600">The requested application record could not be found in the database.</p>
+            )}
+          </div>
+        )}
+
+        {/* Application found but 0 requirements available */}
+        {!loading && !error && totalCount === 0 && (
+          <div className="mt-6 py-12 text-center bg-slate-50 rounded-2xl border border-slate-200 p-6 space-y-2">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <h4 className="text-sm font-bold text-slate-900">Application found.</h4>
+            <p className="text-xs font-semibold text-slate-600">0 requirements available.</p>
+            <p className="text-[11px] text-slate-400">No statutory document requirements are registered for this profile.</p>
           </div>
         )}
 

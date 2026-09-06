@@ -38,6 +38,7 @@ export const ApplicationWorkspacePage = ({
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [errorType, setErrorType] = useState(null); // 'not_found', 'network', 'auth'
   const [activeTab, setActiveTab] = useState(initialTab || 'approvals');
   const [selectedApprovalModal, setSelectedApprovalModal] = useState(null);
   const approvalsRef = useRef(null);
@@ -47,15 +48,30 @@ export const ApplicationWorkspacePage = ({
     try {
       setLoading(true);
       setError(null);
+      setErrorType(null);
       const res = await applicationApi.getById(applicationId);
       if (res && res.success && res.application) {
         setAppData(res.application);
       } else {
-        setError('Application not found or access denied');
+        setError('Application not found.');
+        setErrorType('not_found');
       }
     } catch (err) {
       console.error('Error fetching application:', err);
-      setError(err.message || 'Failed to load application');
+      const status = err.status || err.response?.status;
+      const isAuth = status === 401 || err.message?.includes('Authentication required') || err.message?.includes('token') || err.message?.includes('expired');
+      const isNotFound = err.isApplicationNotFound || (status === 404 && err.response?.data?.message === 'Application not found');
+
+      if (isAuth) {
+        setError('Session expired. Please log in again.');
+        setErrorType('auth');
+      } else if (isNotFound) {
+        setError('Application not found.');
+        setErrorType('not_found');
+      } else {
+        setError('Unable to connect to application service.');
+        setErrorType('network');
+      }
     } finally {
       setLoading(false);
     }
@@ -144,7 +160,7 @@ export const ApplicationWorkspacePage = ({
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 text-center">
         <RefreshCw className="w-10 h-10 text-brand-600 animate-spin mx-auto mb-4" />
-        <h2 className="text-lg font-bold text-slate-800">Loading Application Dossier...</h2>
+        <h2 className="text-lg font-bold text-slate-800">Loading application...</h2>
         <p className="text-xs text-slate-500 mt-1">Verifying ownership and fetching statutory records from database</p>
       </div>
     );
@@ -153,20 +169,67 @@ export const ApplicationWorkspacePage = ({
   if (error || !appData) {
     return (
       <div className="max-w-xl mx-auto px-4 py-20 text-center space-y-4">
-        <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto">
+        <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
           <AlertCircle className="w-7 h-7" />
         </div>
-        <h2 className="text-xl font-bold text-slate-900">Application Access Restricted</h2>
-        <p className="text-xs text-slate-600">
-          {error || 'This application does not exist or does not belong to your account.'}
-        </p>
-        <button
-          onClick={() => onNavigate('/my-applications')}
-          className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-brand-700 text-white text-xs font-bold hover:bg-brand-800 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Return to My Applications</span>
-        </button>
+        <h2 className="text-xl font-bold text-slate-900">{error || 'Application not found.'}</h2>
+
+        {errorType === 'network' && (
+          <>
+            <p className="text-xs text-slate-600">
+              Unable to reach the application service. Please check your connection and try again.
+            </p>
+            <div className="flex items-center justify-center space-x-3 pt-2">
+              <button
+                onClick={loadApplication}
+                className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-brand-700 text-white text-xs font-bold hover:bg-brand-800 transition-colors cursor-pointer"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Retry</span>
+              </button>
+              <button
+                onClick={() => onNavigate('/my-applications')}
+                className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>My Applications</span>
+              </button>
+            </div>
+          </>
+        )}
+
+        {errorType === 'auth' && (
+          <>
+            <p className="text-xs text-slate-600">
+              Your authentication session has expired. Please log in again to access this application.
+            </p>
+            <div className="pt-2">
+              <button
+                onClick={() => onNavigate('/login')}
+                className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-brand-700 text-white text-xs font-bold hover:bg-brand-800 transition-colors cursor-pointer"
+              >
+                <span>Log In</span>
+              </button>
+            </div>
+          </>
+        )}
+
+        {(errorType === 'not_found' || (!errorType && !appData)) && (
+          <>
+            <p className="text-xs text-slate-600">
+              The application with ID "{applicationId}" does not exist in the database or does not belong to your account.
+            </p>
+            <div className="pt-2">
+              <button
+                onClick={() => onNavigate('/my-applications')}
+                className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-brand-700 text-white text-xs font-bold hover:bg-brand-800 transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Return to My Applications</span>
+              </button>
+            </div>
+          </>
+        )}
       </div>
     );
   }
@@ -352,8 +415,13 @@ export const ApplicationWorkspacePage = ({
                 ))}
               </div>
             ) : (
-              <div className="p-8 text-center text-xs text-slate-500">
-                No statutory clearances required for the selected operational parameters.
+              <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <h4 className="text-sm font-bold text-slate-900">Application found.</h4>
+                <p className="text-xs font-semibold text-slate-600">0 requirements available.</p>
+                <p className="text-[11px] text-slate-400">No statutory clearances required for the selected operational parameters.</p>
               </div>
             )}
           </div>

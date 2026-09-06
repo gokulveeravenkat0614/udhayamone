@@ -1,5 +1,12 @@
 export const getApiBaseUrl = () => {
   let base = '';
+  if (typeof window !== 'undefined') {
+    if (window.UDYAMONE_API_URL) return window.UDYAMONE_API_URL.replace(/\/+$/, '');
+    try {
+      const stored = localStorage.getItem('udyamone_api_url');
+      if (stored) return stored.replace(/\/+$/, '');
+    } catch {}
+  }
   if (typeof import.meta !== 'undefined') {
     if (import.meta.env?.VITE_API_BASE_URL) base = import.meta.env.VITE_API_BASE_URL;
     else if (import.meta.env?.VITE_API_URL) base = import.meta.env.VITE_API_URL;
@@ -37,18 +44,34 @@ async function request(path, options = {}) {
   try {
     response = await fetch(url, { ...options, headers });
   } catch (netErr) {
-    const error = new Error('Unable to connect to server. Please try again.');
+    const error = new Error('Unable to connect to application service.');
     error.name = 'NetworkError';
     error.status = 0;
     error.originalError = netErr;
     throw error;
   }
 
+  // Verify response type: if static server or CDN returned an HTML error page or index.html rewrite,
+  // that indicates the API service endpoint is unreachable, not an application-level not-found.
+  const contentType = (response.headers && response.headers.get('content-type')) || '';
+  const isJson = contentType.includes('application/json');
+
+  if (!isJson) {
+    const error = new Error('Unable to connect to application service.');
+    error.name = 'NetworkError';
+    error.status = response.status >= 400 ? response.status : 503;
+    error.response = { status: error.status, data: null };
+    throw error;
+  }
+
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = new Error(data.message || `Request failed with status ${response.status}`);
+    const message = data.message || `Request failed with status ${response.status}`;
+    const error = new Error(message);
     error.status = response.status;
     error.response = { status: response.status, data };
+    // Only genuine 404 from backend specifically stating Application not found
+    error.isApplicationNotFound = response.status === 404 && data?.message === 'Application not found';
     throw error;
   }
   return data;

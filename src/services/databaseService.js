@@ -103,8 +103,8 @@ export function saveStoredDatabaseRecords(records) {
 export async function validateUploadedDocumentAgainstDatabase({
   documentId,
   documentType,
-  applicationId = 'MH-10245',
-  userId = 'demo-user'
+  applicationId = null,
+  userId = null
 }) {
   // First attempt backend database check via REST API
   try {

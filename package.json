@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "start": "node backend/server.js",
     "test": "node tests/run-tests.mjs && node tests/test-integration.mjs",
     "test:unit": "node tests/run-tests.mjs",
     "test:integration": "node tests/test-integration.mjs",
