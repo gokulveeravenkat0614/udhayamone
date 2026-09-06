@@ -88,9 +88,14 @@ export default function App() {
 
     setRequirementsResult(results);
     setViewingPage2(true);
-    // Smooth scroll to top of requirements
-    window.scrollTo({ top: 380, behavior: 'smooth' });
-    showToast(`Requirements generated for ${selectedIndustry} in ${selectedDistrict}, ${selectedState}!`);
+    // Smooth scroll directly to the required government approvals section
+    setTimeout(() => {
+      const el = document.getElementById('required-approvals-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+    showToast(`Required government approvals loaded for ${selectedIndustry} in ${selectedDistrict}, ${selectedState}!`);
   };
 
   // Preset selector
@@ -112,7 +117,12 @@ export default function App() {
     setRequirementsResult(results);
     setViewingPage2(true);
     setCurrentTab('home');
-    window.scrollTo({ top: 380, behavior: 'smooth' });
+    setTimeout(() => {
+      const el = document.getElementById('required-approvals-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
     showToast(`Loaded preset: ${district}, ${state} • ${industry}`);
   };
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   ArrowLeft, 
   Building2, 
@@ -41,6 +41,23 @@ export const RequirementsView = ({
   // Main tabs: 'approvals', 'graph', 'journey', 'exemptions', 'documents', 'otherRegs'
   const [activeMainTab, setActiveMainTab] = useState('approvals');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All Categories');
+  const approvalsSectionRef = useRef(null);
+
+  // Directly land on the section where required government approvals, certificates, licenses, NOCs are listed
+  useEffect(() => {
+    setActiveMainTab('approvals');
+    const timer = setTimeout(() => {
+      if (approvalsSectionRef.current) {
+        approvalsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        const el = document.getElementById('required-approvals-section');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [requirements]);
 
   if (!requirements) return null;
 
@@ -90,8 +107,8 @@ export const RequirementsView = ({
         </button>
 
         <div className="flex items-center space-x-2 text-xs text-slate-500">
-          <span>Discovery Step:</span>
-          <span className="font-bold text-slate-900">Eligibility & Dependency Dashboard</span>
+          <span>Required Clearances:</span>
+          <span className="font-bold text-slate-900">Government Approvals, Licenses & NOCs</span>
         </div>
       </div>
 
@@ -147,9 +164,19 @@ export const RequirementsView = ({
           {/* Dataset Calculated Summary Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-slate-100">
             
-            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Applicable Approvals
+            <div 
+              onClick={() => {
+                setActiveMainTab('approvals');
+                setTimeout(() => {
+                  approvalsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 50);
+              }}
+              className="p-5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-brand-400 hover:bg-blue-50/30 transition-all cursor-pointer group"
+              title="Click to jump directly to the approvals list"
+            >
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider group-hover:text-brand-800 flex items-center justify-between">
+                <span>Applicable Approvals</span>
+                <span className="text-brand-700 font-bold text-[10px]">Jump ↓</span>
               </div>
               <div className="text-3xl font-black text-brand-900 mt-1">
                 {calculatedApprovalsCount}
@@ -214,7 +241,12 @@ export const RequirementsView = ({
         
         {/* Tab 1: Approvals */}
         <button
-          onClick={() => setActiveMainTab('approvals')}
+          onClick={() => {
+            setActiveMainTab('approvals');
+            setTimeout(() => {
+              approvalsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 50);
+          }}
           className={`px-4 py-3 rounded-t-xl transition-all flex items-center space-x-1.5 shrink-0 cursor-pointer ${
             activeMainTab === 'approvals'
               ? 'bg-white text-brand-800 border-t-2 border-x border-slate-200 border-t-brand-700 shadow-2xs -mb-1'
@@ -222,7 +254,7 @@ export const RequirementsView = ({
           }`}
         >
           <ShieldCheck className="w-4 h-4 text-brand-700" />
-          <span>Applicable Approvals ({calculatedApprovalsCount})</span>
+          <span>Required Approvals ({calculatedApprovalsCount})</span>
         </button>
 
         {/* Tab 2: Dependency Graph */}
@@ -291,51 +323,75 @@ export const RequirementsView = ({
         </button>
       </div>
 
-      {/* TAB 1: Applicable Approvals */}
+      {/* TAB 1: Required Government Approvals */}
       {activeMainTab === 'approvals' && (
-        <div className="space-y-6">
+        <div id="required-approvals-section" ref={approvalsSectionRef} className="space-y-6 scroll-mt-20">
           
-          {/* Category Filter Chips */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center space-x-1 text-xs text-slate-500">
-              <Filter className="w-3.5 h-3.5 text-brand-600 mr-1" />
-              <span className="font-semibold text-slate-700">Filter by Department:</span>
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-soft">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+              <div>
+                <div className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-800 text-xs font-bold mb-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Statutory Government Clearances</span>
+                </div>
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                  Required Government Approvals, Licenses & NOCs
+                </h3>
+                <p className="text-slate-600 text-xs sm:text-sm mt-1">
+                  Required government approvals, certificates, licenses, NOCs, and permissions for your facility in <strong className="text-slate-800">{district}, {state}</strong>.
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-2 shrink-0">
+                <span className="px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200">
+                  Showing {filteredApprovals.length} of {calculatedApprovalsCount} Approvals
+                </span>
+              </div>
             </div>
 
-            <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs">
-              {REQUIREMENT_CATEGORIES.slice(0, 8).map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategoryFilter(cat)}
-                  className={`px-3 py-1.5 rounded-lg font-bold transition-colors whitespace-nowrap cursor-pointer ${
-                    selectedCategoryFilter === cat
-                      ? 'bg-brand-800 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {cat}
-                </button>
+            {/* Category Filter Chips */}
+            <div className="mt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center space-x-1 text-xs text-slate-500 shrink-0">
+                <Filter className="w-3.5 h-3.5 text-brand-600 mr-1" />
+                <span className="font-semibold text-slate-700">Filter by Department:</span>
+              </div>
+
+              <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs">
+                {REQUIREMENT_CATEGORIES.slice(0, 8).map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategoryFilter(cat)}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition-colors whitespace-nowrap cursor-pointer ${
+                      selectedCategoryFilter === cat
+                        ? 'bg-brand-800 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Cards Grid */}
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredApprovals.map((approval) => (
+                <ApprovalCard
+                  key={approval.id}
+                  approval={approval}
+                  onViewDetails={(app) => setSelectedApprovalModal(app)}
+                  userAppStatus={getAppStatusForApproval(approval.id)}
+                />
               ))}
             </div>
+
+            {filteredApprovals.length === 0 && (
+              <div className="py-12 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200 mt-6">
+                No approvals categorized under "{selectedCategoryFilter}". Select "All Categories" to view all.
+              </div>
+            )}
           </div>
 
-          {/* Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredApprovals.map((approval) => (
-              <ApprovalCard
-                key={approval.id}
-                approval={approval}
-                onViewDetails={(app) => setSelectedApprovalModal(app)}
-                userAppStatus={getAppStatusForApproval(approval.id)}
-              />
-            ))}
-          </div>
-
-          {filteredApprovals.length === 0 && (
-            <div className="py-12 text-center text-xs text-slate-400">
-              No approvals categorized under "{selectedCategoryFilter}". Select "All Categories" to view all.
-            </div>
-          )}
         </div>
       )}
 

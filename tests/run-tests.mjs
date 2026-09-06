@@ -262,6 +262,19 @@ demoReqs.documents.forEach(doc => {
   }
 });
 
+// TEST SUITE 11: NAVIGATION FLOW - DIRECT LANDING ON REQUIRED APPROVALS LIST
+console.log("\n▶ TEST SUITE 11: Navigation Flow & Approvals Landing Verification");
+import fs from 'fs';
+const appJsxContent = fs.readFileSync('src/App.jsx', 'utf-8');
+const reqViewContent = fs.readFileSync('src/components/RequirementsView.jsx', 'utf-8');
+const businessFormContent = fs.readFileSync('src/components/BusinessForm.jsx', 'utf-8');
+
+assert(businessFormContent.includes("Find Required Approvals & Sequence"), "BusinessForm contains submit action 'Find Required Approvals & Sequence'");
+assert(reqViewContent.includes('id="required-approvals-section"'), "RequirementsView contains target anchor 'required-approvals-section'");
+assert(appJsxContent.includes('required-approvals-section'), "App.jsx handleFindApprovals scrolls directly to 'required-approvals-section'");
+assert(reqViewContent.includes('Required Government Approvals, Licenses & NOCs'), "RequirementsView has prominent section heading for required government approvals");
+assert(!appJsxContent.includes("window.scrollTo({ top: 380"), "Bug fixed: Hardcoded top: 380 scroll landing on Eligibility Dashboard removed");
+
 console.log("\n=======================================================");
 console.log(`🏁 TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);
 if (failed === 0) {
