@@ -259,6 +259,183 @@ const server = app.listen(5098, async () => {
       req.end();
     });
 
+    // TEST SUITE 4: Client Authentication & Application Workspace API
+    console.log("\n▶ TEST SUITE 4: Client Authentication & Application Workspace API");
+
+    function makeJsonRequest({ path, method = 'GET', headers = {}, body = null }) {
+      return new Promise((resolve, reject) => {
+        const postData = body ? JSON.stringify(body) : null;
+        const reqHeaders = { ...headers };
+        if (postData) {
+          reqHeaders['Content-Type'] = 'application/json';
+          reqHeaders['Content-Length'] = Buffer.byteLength(postData);
+        }
+        const req = http.request({
+          hostname: '127.0.0.1',
+          port: 5098,
+          path,
+          method,
+          headers: reqHeaders
+        }, (res) => {
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => {
+            let json = null;
+            try { json = JSON.parse(data); } catch {}
+            resolve({ statusCode: res.statusCode, data: json, raw: data });
+          });
+        });
+        req.on('error', reject);
+        if (postData) req.write(postData);
+        req.end();
+      });
+    }
+
+    // 4.1 Register validation: Reject short mobile
+    const regInvalidMobile = await makeJsonRequest({
+      path: '/api/auth/register',
+      method: 'POST',
+      body: {
+        name: 'Test Enterprise',
+        email: 'test@enterprise.in',
+        mobile: '12345',
+        password: 'Password@123',
+        confirmPassword: 'Password@123'
+      }
+    });
+    assert(regInvalidMobile.statusCode === 400, "Registration rejects mobile number under 10 digits");
+
+    // 4.2 Register validation: Reject mismatched password
+    const regMismatch = await makeJsonRequest({
+      path: '/api/auth/register',
+      method: 'POST',
+      body: {
+        name: 'Test Enterprise',
+        email: 'test@enterprise.in',
+        mobile: '9876543210',
+        password: 'Password@123',
+        confirmPassword: 'DifferentPassword'
+      }
+    });
+    assert(regMismatch.statusCode === 400, "Registration rejects mismatched password confirmation");
+
+    // 4.3 Register: Successful new user creation
+    const uniqueEmail = `client_${Date.now()}@enterprise.in`;
+    const uniqueMobile = `9${Math.floor(100000000 + Math.random() * 900000000)}`;
+    const regSuccess = await makeJsonRequest({
+      path: '/api/auth/register',
+      method: 'POST',
+      body: {
+        name: 'Apex Industrial Corp',
+        email: uniqueEmail,
+        mobile: uniqueMobile,
+        password: 'Password@123',
+        confirmPassword: 'Password@123'
+      }
+    });
+    assert(regSuccess.statusCode === 201 && regSuccess.data?.token, "Registration successfully creates new client and issues JWT token");
+    const newClientToken = regSuccess.data?.token;
+
+    // 4.4 Login: Authenticate with demo email and Password@123
+    const loginEmail = await makeJsonRequest({
+      path: '/api/auth/login',
+      method: 'POST',
+      body: { email: 'demo@udyamone.test', password: 'Password@123' }
+    });
+    assert(loginEmail.statusCode === 200 && loginEmail.data?.token, "Login succeeds with demo email and Password@123");
+    const demoToken = loginEmail.data?.token;
+
+    // 4.5 Login: Authenticate with mobile number and password
+    const loginMobile = await makeJsonRequest({
+      path: '/api/auth/login',
+      method: 'POST',
+      body: { email: '9820144521', password: 'Password@123' }
+    });
+    assert(loginMobile.statusCode === 200 && loginMobile.data?.token, "Login succeeds with 10-digit mobile number");
+
+    // 4.6 Login: Rejects invalid password
+    const loginBadPass = await makeJsonRequest({
+      path: '/api/auth/login',
+      method: 'POST',
+      body: { email: 'demo@udyamone.test', password: 'WrongPassword' }
+    });
+    assert(loginBadPass.statusCode === 401, "Login rejects incorrect password with HTTP 401");
+
+    // 4.7 GET /api/auth/me returns current user
+    const meRes = await makeJsonRequest({
+      path: '/api/auth/me',
+      headers: { Authorization: `Bearer ${demoToken}` }
+    });
+    assert(meRes.statusCode === 200 && meRes.data?.user?.email === 'demo@udyamone.test', "GET /api/auth/me returns authenticated user");
+
+    // 4.8 Unauthenticated access to /api/applications rejected
+    const unauthApps = await makeJsonRequest({ path: '/api/applications' });
+    assert(unauthApps.statusCode === 401, "GET /api/applications returns 401 Unauthorized without token");
+
+    // 4.9 GET /api/applications with token returns client's applications
+    const demoApps = await makeJsonRequest({
+      path: '/api/applications',
+      headers: { Authorization: `Bearer ${demoToken}` }
+    });
+    assert(demoApps.statusCode === 200 && Array.isArray(demoApps.data?.applications), "GET /api/applications returns client-owned applications");
+    assert(demoApps.data.applications.length >= 2, "Demo user has pre-evaluated applications loaded");
+
+    // 4.10 POST /api/applications creates new application with rules evaluation
+    const createNewApp = await makeJsonRequest({
+      path: '/api/applications',
+      method: 'POST',
+      headers: { Authorization: `Bearer ${demoToken}` },
+      body: {
+        state: 'Maharashtra',
+        district: 'Pune',
+        industry: 'Manufacturing',
+        businessProfile: {
+          entityType: 'Private Limited Company',
+          investment: 2.5,
+          turnover: 12.0,
+          employeeCount: 25,
+          powerRequired: 75,
+          builtUpArea: 1500
+        }
+      }
+    });
+    assert(createNewApp.statusCode === 201 && createNewApp.data?.application?.applicationId, "POST /api/applications creates new application with unique ID");
+    const createdAppId = createNewApp.data?.application?.applicationId;
+
+    // 4.11 GET /api/applications/:id fetches application workspace data
+    const getApp = await makeJsonRequest({
+      path: `/api/applications/${createdAppId}`,
+      headers: { Authorization: `Bearer ${demoToken}` }
+    });
+    assert(getApp.statusCode === 200 && getApp.data?.application?.approvals?.length > 0, "GET /api/applications/:id returns application with evaluated statutory approvals");
+
+    // 4.12 PUT /api/applications/:id updates application progress
+    const updateApp = await makeJsonRequest({
+      path: `/api/applications/${createdAppId}`,
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${demoToken}` },
+      body: {
+        progressPercentage: 55,
+        status: 'In Progress'
+      }
+    });
+    assert(updateApp.statusCode === 200 && updateApp.data?.application?.progressPercentage === 55, "PUT /api/applications/:id updates progress percentage");
+
+    // 4.13 Client Isolation: New Client cannot access Demo Client's application
+    const crossAccess = await makeJsonRequest({
+      path: `/api/applications/${createdAppId}`,
+      headers: { Authorization: `Bearer ${newClientToken}` }
+    });
+    assert(crossAccess.statusCode === 403, "Backend ownership isolation enforced: Client cannot access another user's application (HTTP 403)");
+
+    // 4.14 POST /api/applications/:id/submit submits application for review
+    const submitApp = await makeJsonRequest({
+      path: `/api/applications/${createdAppId}/submit`,
+      method: 'POST',
+      headers: { Authorization: `Bearer ${demoToken}` }
+    });
+    assert(submitApp.statusCode === 200 && submitApp.data?.application?.status === 'Submitted', "POST /api/applications/:id/submit marks status as Submitted");
+
     server.close(() => {
       console.log("\n=======================================================");
       console.log(`🏁 INTEGRATION RESULTS: ${passed} PASSED, ${failed} FAILED`);

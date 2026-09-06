@@ -6,6 +6,7 @@ const verificationRoutes = require('./routes/verificationRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const approvalRoutes = require('./routes/approvalRoutes');
 const documentRoutes = require('./routes/documentRoutes');
+const applicationRoutes = require('./routes/applicationRoutes');
 
 const app = express();
 app.use(cors({ origin:true, credentials:true }));
@@ -16,6 +17,7 @@ app.use('/api/verification', verificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/approvals', approvalRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/applications', applicationRoutes);
 app.use('/uploads', express.static(path.join(__dirname,'uploads')));
 app.use((req,res)=>res.status(404).json({success:false,message:`Route not found: ${req.method} ${req.originalUrl}`}));
 module.exports = app;
