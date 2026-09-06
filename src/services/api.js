@@ -123,16 +123,54 @@ export const applicationApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data || {})
     }),
-  uploadDocument: (id, { docId, docName, category, whyRequired, file }) => {
-    const form = new FormData();
-    form.append('docId', docId);
-    if (docName) form.append('docName', docName);
-    if (category) form.append('category', category);
-    if (whyRequired) form.append('whyRequired', whyRequired);
-    if (file) form.append('document', file);
+  getDocuments: (id) =>
+    request(`/applications/${encodeURIComponent(id)}/documents`),
+  uploadDocument: (id, payload) => {
+    if (payload instanceof FormData) {
+      return request(`/applications/${encodeURIComponent(id)}/documents`, {
+        method: 'POST',
+        body: payload
+      });
+    }
+    const { docId, documentId, docName, documentType, name, category, whyRequired, file, fileName, fileSize } = payload || {};
+    
+    // If an actual File object was provided, construct FormData
+    if (file && typeof file !== 'string' && file.name) {
+      const form = new FormData();
+      form.append('documentId', documentId || docId);
+      form.append('docId', documentId || docId);
+      if (documentType || docName || name) {
+        form.append('documentType', documentType || docName || name);
+        form.append('docName', documentType || docName || name);
+      }
+      if (category) form.append('category', category);
+      if (whyRequired) form.append('whyRequired', whyRequired);
+      form.append('fileName', file.name);
+      const sizeStr = file.size < 1024 * 1024 
+        ? `${(file.size / 1024).toFixed(1)} KB` 
+        : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+      form.append('fileSize', sizeStr);
+      form.append('document', file);
+      return request(`/applications/${encodeURIComponent(id)}/documents`, {
+        method: 'POST',
+        body: form
+      });
+    }
+
+    // Otherwise send as JSON payload
     return request(`/applications/${encodeURIComponent(id)}/documents`, {
       method: 'POST',
-      body: form
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        documentId: documentId || docId,
+        docId: documentId || docId,
+        documentType: documentType || docName || name,
+        docName: documentType || docName || name,
+        category,
+        whyRequired,
+        fileName: fileName || (file ? file.name : null),
+        fileSize: fileSize || '1.2 MB'
+      })
     });
   },
   deleteDocument: (id, docId) =>

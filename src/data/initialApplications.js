@@ -28,10 +28,9 @@ export const INITIAL_APPLICATIONS = [
       { name: "Approval & Grant of License", date: "Pending", done: false, remarks: "Digital Certificate release upon inspection report" }
     ],
     submittedDocs: [
-      { name: "Building Layout / Site Plan", file: "factory_layout_plan_v2.pdf", status: "Verified" },
+      { name: "Building Layout / Site Plan", file: "dish_layout_drawing.pdf", status: "Verified" },
       { name: "Machinery Details & HP Rating", file: "machinery_power_schedule.pdf", status: "Verified" },
-      { name: "Form 1 (Notice of Occupation)", file: "form_1_signed.pdf", status: "Verified" },
-      { name: "Business Incorporation Certificate", file: "mca_incorporation_cert.pdf", status: "Verified" }
+      { name: "Form 1 (Notice of Occupation)", file: "form_1_signed.pdf", status: "Verified" }
     ],
     certificateNumber: null
   },
@@ -59,11 +58,7 @@ export const INITIAL_APPLICATIONS = [
       { name: "Site Inspection", date: "09 Aug 2026", done: true, remarks: "Site visit completed without adverse remarks" },
       { name: "Approval & Grant of License", date: "16 Aug 2026", done: true, remarks: "Consent to Establish issued digitally" }
     ],
-    submittedDocs: [
-      { name: "Environmental Management Plan", file: "emp_mitigation_plan.pdf", status: "Approved" },
-      { name: "Effluent Treatment Plant (ETP) Scheme", file: "etp_design_drawing.pdf", status: "Approved" },
-      { name: "Land Ownership / Lease Agreement", file: "midc_lease_agreement.pdf", status: "Approved" }
-    ],
+    submittedDocs: [],
     certificateNumber: "MPCB/CTE/PUN/2026/7821-X"
   },
   {
@@ -90,11 +85,7 @@ export const INITIAL_APPLICATIONS = [
       { name: "Site Inspection", date: "Pending", done: false, remarks: "On-site hydrant & sprinkler drill" },
       { name: "Approval & Grant of License", date: "Pending", done: false, remarks: "Provisional Fire NOC release" }
     ],
-    submittedDocs: [
-      { name: "Fire Hydrant & Sprinkler Drawing", file: "fire_evacuation_blueprint.pdf", status: "Uploaded" },
-      { name: "Architectural Section Plans", file: "building_elevation_sections.pdf", status: "Uploaded" },
-      { name: "Water Storage Tank Adequacy Certificate", file: "water_tank_cert.pdf", status: "Uploaded" }
-    ],
+    submittedDocs: [],
     certificateNumber: null
   },
   {
@@ -121,11 +112,7 @@ export const INITIAL_APPLICATIONS = [
       { name: "Site Inspection", date: "28 Jun 2026", done: true, remarks: "Setbacks and approach road measured" },
       { name: "Approval & Grant of License", date: "05 Jul 2026", done: true, remarks: "Building Commencement Certificate issued" }
     ],
-    submittedDocs: [
-      { name: "Sanctioned Architectural Drawings", file: "sanctioned_architectural_plans.pdf", status: "Approved" },
-      { name: "Structural Engineer Stability Certificate", file: "structural_stability_cert.pdf", status: "Approved" },
-      { name: "MIDC Allotment Letter & Possession Receipt", file: "midc_possession_letter.pdf", status: "Approved" }
-    ],
+    submittedDocs: [],
     certificateNumber: "MIDC/TP/BHO/2026/0419"
   },
   {
@@ -152,11 +139,7 @@ export const INITIAL_APPLICATIONS = [
       { name: "Site Inspection", date: "30 Aug 2026", done: true, remarks: "Transformer yard inspection completed" },
       { name: "Approval & Grant of License", date: "Pending", done: false, active: true, remarks: "Pending demand note payment receipt" }
     ],
-    submittedDocs: [
-      { name: "Electrical Wiring Blueprint & Single Line Diagram", file: "electrical_sld_250kva.pdf", status: "Verified" },
-      { name: "Licensed Electrical Contractor Test Report", file: "contractor_test_report.pdf", status: "Verified" },
-      { name: "Proof of Ownership / Lease Agreement", file: "premises_ownership_proof.pdf", status: "Verified" }
-    ],
+    submittedDocs: [],
     certificateNumber: null
   }
 ];

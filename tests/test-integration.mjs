@@ -436,6 +436,72 @@ const server = app.listen(5098, async () => {
     });
     assert(submitApp.statusCode === 200 && submitApp.data?.application?.status === 'Submitted', "POST /api/applications/:id/submit marks status as Submitted");
 
+    // 4.15 GET /api/applications/:id/documents requires authentication
+    const unauthDocs = await makeJsonRequest({
+      path: `/api/applications/${createdAppId}/documents`
+    });
+    assert(unauthDocs.statusCode === 401, "GET /api/applications/:id/documents rejects unauthenticated request (HTTP 401)");
+
+    // 4.16 User Data Isolation: Client B cannot view Client A's application documents
+    const crossDocs = await makeJsonRequest({
+      path: `/api/applications/${createdAppId}/documents`,
+      headers: { Authorization: `Bearer ${newClientToken}` }
+    });
+    assert(crossDocs.statusCode === 403, "User data isolation enforced: Client B cannot view Client A documents (HTTP 403)");
+
+    // 4.17 Initial state: Required documents show strictly 'NOT UPLOADED' with null file fields
+    const initialDocs = await makeJsonRequest({
+      path: `/api/applications/${createdAppId}/documents`,
+      headers: { Authorization: `Bearer ${demoToken}` }
+    });
+    assert(initialDocs.statusCode === 200 && Array.isArray(initialDocs.data?.documents), "GET /api/applications/:id/documents returns documents array");
+    const allNotUploaded = initialDocs.data.documents.every(d => d.status === 'NOT UPLOADED' && d.fileName === null && d.fileSize === null);
+    assert(allNotUploaded, "Real Database Core Rule: Un-uploaded statutory documents strictly show status 'NOT UPLOADED' with no fake files");
+
+    // 4.18 POST /api/applications/:id/documents creates real database record and validates against database source of truth
+    const uploadApproved = await makeJsonRequest({
+      path: `/api/applications/${createdAppId}/documents`,
+      method: 'POST',
+      headers: { Authorization: `Bearer ${demoToken}` },
+      body: {
+        documentId: 'doc-pan',
+        documentType: 'PAN Card / Business PAN',
+        fileName: 'actual_enterprise_pan.pdf',
+        fileSize: '1.4 MB'
+      }
+    });
+    assert(uploadApproved.statusCode === 200 && uploadApproved.data?.document?.status === 'APPROVED', "Upload with matching database record creates APPROVED real database document");
+    assert(uploadApproved.data?.document?.fileName === 'actual_enterprise_pan.pdf', "Real document displays actual uploaded filename");
+
+    const uploadRejected = await makeJsonRequest({
+      path: `/api/applications/${createdAppId}/documents`,
+      method: 'POST',
+      headers: { Authorization: `Bearer ${demoToken}` },
+      body: {
+        documentId: 'doc-project',
+        documentType: 'Custom Project Report',
+        fileName: 'unverified_project_draft.pdf',
+        fileSize: '3.1 MB'
+      }
+    });
+    assert(uploadRejected.statusCode === 200 && uploadRejected.data?.document?.status === 'REJECTED', "Upload without matching database record is strictly marked REJECTED (never approved merely because user uploaded file)");
+
+    // 4.19 DELETE /api/applications/:id/documents/:docId resets status to NOT UPLOADED
+    const deleteDoc = await makeJsonRequest({
+      path: `/api/applications/${createdAppId}/documents/doc-pan`,
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${demoToken}` }
+    });
+    assert(deleteDoc.statusCode === 200 && deleteDoc.data?.success === true, "DELETE /api/applications/:id/documents/:docId deletes uploaded document");
+
+    // 4.20 Verify state after delete via GET documents
+    const afterDeleteDocs = await makeJsonRequest({
+      path: `/api/applications/${createdAppId}/documents`,
+      headers: { Authorization: `Bearer ${demoToken}` }
+    });
+    const panAfterDelete = afterDeleteDocs.data.documents.find(d => d.documentId === 'doc-pan');
+    assert(panAfterDelete && panAfterDelete.status === 'NOT UPLOADED' && panAfterDelete.fileName === null, "Document status successfully reset to NOT UPLOADED with null filename upon deletion");
+
     server.close(() => {
       console.log("\n=======================================================");
       console.log(`🏁 INTEGRATION RESULTS: ${passed} PASSED, ${failed} FAILED`);

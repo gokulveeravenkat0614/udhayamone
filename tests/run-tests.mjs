@@ -62,7 +62,7 @@ assert(demoReqs.industry === "Manufacturing", "Scenario industry is Manufacturin
 assert(demoReqs.summary.approvalsCount === 5, `Government Approvals count is exactly 5 (${demoReqs.summary.approvalsCount} found)`);
 assert(demoReqs.summary.documentsCount === 9, `Required Documents count is exactly 9 (${demoReqs.summary.documentsCount} found)`);
 assert(demoReqs.summary.otherRegistrationsCount === 3, `Other Registrations count is exactly 3 (${demoReqs.summary.otherRegistrationsCount} found)`);
-assert(demoReqs.summary.readyDocumentsCount === 6, `Document readiness shows exactly '6 of 9 ready' (${demoReqs.summary.readyDocumentsCount} found)`);
+assert(demoReqs.summary.readyDocumentsCount === 0, `Initial required documents start with 0 uploaded records (${demoReqs.summary.readyDocumentsCount} found)`);
 
 // Required Approvals names check
 const approvalNames = demoReqs.approvals.map(a => a.name);

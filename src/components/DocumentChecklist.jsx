@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   FileText, 
   Upload, 
@@ -19,6 +19,7 @@ import {
   Plus,
   RotateCcw
 } from 'lucide-react';
+import { applicationApi } from '../services/api';
 import { 
   validateUploadedDocumentAgainstDatabase,
   getStoredDatabaseRecords,
@@ -30,10 +31,12 @@ import {
 export const DocumentChecklist = ({ 
   documents = [], 
   onDocumentsUpdated,
-  applicationId = 'MH-10245',
+  applicationId = null,
   userId = 'demo-user'
 }) => {
   const [docsList, setDocsList] = useState(documents);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'approved', 'rejected', 'not_uploaded'
   const [sessionToast, setSessionToast] = useState('');
   const [toastType, setToastType] = useState('info'); // 'info', 'success', 'error'
@@ -42,11 +45,47 @@ export const DocumentChecklist = ({
   const [showDbRegistry, setShowDbRegistry] = useState(false);
   const [dbRecords, setDbRecords] = useState(() => getStoredDatabaseRecords());
 
-  // Synchronize with parent props during render
+  // Load documents from backend API when applicationId is provided
+  const loadDocuments = useCallback(async () => {
+    if (!applicationId) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await applicationApi.getDocuments(applicationId);
+      if (res && res.success && Array.isArray(res.documents)) {
+        setDocsList(res.documents);
+        if (onDocumentsUpdated) {
+          onDocumentsUpdated(res.documents);
+        }
+      } else if (res && Array.isArray(res.documents)) {
+        setDocsList(res.documents);
+        if (onDocumentsUpdated) {
+          onDocumentsUpdated(res.documents);
+        }
+      }
+    } catch (err) {
+      console.warn('API document load error:', err);
+      // As per Rule 18: Never load mock data when API fails!
+      setDocsList([]);
+      setError("Unable to load documents. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [applicationId, onDocumentsUpdated]);
+
+  useEffect(() => {
+    if (applicationId) {
+      loadDocuments();
+    }
+  }, [applicationId, loadDocuments]);
+
+  // Synchronize with parent props during render if no active error and applicationId didn't fetch yet
   const [prevDocuments, setPrevDocuments] = useState(documents);
   if (documents !== prevDocuments) {
     setPrevDocuments(documents);
-    setDocsList(documents);
+    if (!applicationId) {
+      setDocsList(documents);
+    }
   }
 
   // Refresh database records state
@@ -92,40 +131,76 @@ export const DocumentChecklist = ({
         formattedSize = `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
       }
 
-      const targetDoc = docsList.find(d => d.id === activeUploadDocId);
+      const targetDoc = docsList.find(d => d.id === activeUploadDocId || d.documentId === activeUploadDocId);
 
       // Step 1: Get uploaded document ID, document type, application/user ID
-      const documentId = targetDoc?.id || activeUploadDocId;
-      const documentType = targetDoc?.name || targetDoc?.category || "Unknown";
+      const documentId = targetDoc?.id || targetDoc?.documentId || activeUploadDocId;
+      const documentType = targetDoc?.name || targetDoc?.documentType || targetDoc?.category || "Unknown";
       const userOrAppId = applicationId || userId || "demo-user";
 
-      // Step 2: Check database for corresponding document record
-      const validationResult = await validateUploadedDocumentAgainstDatabase({
-        documentId,
-        documentType,
-        applicationId: userOrAppId,
-        userId: userOrAppId
-      });
+      let uploadSuccess = false;
+      let newDocState = null;
 
-      // Step 3 & Step 4: Status behavior based strictly on database match
-      // Database record exists -> APPROVED
-      // Database record does not exist -> REJECTED
-      const newStatus = validationResult.status; // 'APPROVED' or 'REJECTED'
-      const recordMatched = validationResult.recordExists;
+      // 1. Try real backend API if applicationId is available
+      if (applicationId) {
+        try {
+          const res = await applicationApi.uploadDocument(applicationId, {
+            documentId,
+            docId: documentId,
+            documentType,
+            docName: documentType,
+            name: documentType,
+            category: targetDoc?.category || '',
+            whyRequired: targetDoc?.whyRequired || '',
+            file,
+            fileName: file.name,
+            fileSize: formattedSize
+          });
+
+          if (res && res.success && res.document) {
+            newDocState = {
+              ...targetDoc,
+              ...res.document,
+              id: documentId,
+              documentId
+            };
+            uploadSuccess = true;
+          }
+        } catch (err) {
+          console.warn('Backend upload API note (falling back to local DB validator):', err);
+        }
+      }
+
+      // 2. Database service verification fallback
+      if (!uploadSuccess) {
+        const validationResult = await validateUploadedDocumentAgainstDatabase({
+          documentId,
+          documentType,
+          applicationId: userOrAppId,
+          userId: userOrAppId
+        });
+
+        const newStatus = validationResult.status; // 'APPROVED' or 'REJECTED'
+        const recordMatched = validationResult.recordExists;
+
+        newDocState = {
+          ...targetDoc,
+          id: documentId,
+          documentId,
+          status: newStatus,
+          fileName: file.name,
+          fileSize: formattedSize,
+          fileType: file.type || "document",
+          uploadedAt: new Date().toLocaleTimeString(),
+          databaseRecordExists: recordMatched,
+          validationMessage: validationResult.message,
+          registeredAuthority: validationResult.record?.registeredAuthority || validationResult.record?.metadata?.authority || null
+        };
+      }
 
       const updated = docsList.map(doc => {
-        if (doc.id === activeUploadDocId) {
-          return {
-            ...doc,
-            status: newStatus,
-            fileName: file.name,
-            fileSize: formattedSize,
-            fileType: file.type || "document",
-            uploadedAt: new Date().toLocaleTimeString(),
-            databaseRecordExists: recordMatched,
-            validationMessage: validationResult.message,
-            registeredAuthority: validationResult.record?.registeredAuthority || validationResult.record?.metadata?.authority || null
-          };
+        if (doc.id === activeUploadDocId || doc.documentId === activeUploadDocId) {
+          return newDocState;
         }
         return doc;
       });
@@ -135,7 +210,7 @@ export const DocumentChecklist = ({
         onDocumentsUpdated(updated);
       }
 
-      if (recordMatched) {
+      if (newDocState.status === 'APPROVED') {
         setToastType('success');
         setSessionToast(`APPROVED: "${file.name}" verified against database record for ${documentType}.`);
       } else {
@@ -150,10 +225,20 @@ export const DocumentChecklist = ({
   };
 
   // Delete uploaded file handler
-  const handleDeleteFile = (docId) => {
-    const targetDoc = docsList.find(d => d.id === docId);
+  const handleDeleteFile = async (docId) => {
+    const targetDoc = docsList.find(d => d.id === docId || d.documentId === docId);
+
+    // Call backend API if applicationId is available
+    if (applicationId) {
+      try {
+        await applicationApi.deleteDocument(applicationId, docId);
+      } catch (err) {
+        console.warn('Backend delete API error:', err);
+      }
+    }
+
     const updated = docsList.map(doc => {
-      if (doc.id === docId) {
+      if (doc.id === docId || doc.documentId === docId) {
         return {
           ...doc,
           status: "NOT UPLOADED",
@@ -162,7 +247,8 @@ export const DocumentChecklist = ({
           fileType: null,
           uploadedAt: null,
           databaseRecordExists: false,
-          validationMessage: null
+          validationMessage: null,
+          reason: ''
         };
       }
       return doc;
@@ -486,6 +572,33 @@ export const DocumentChecklist = ({
           </button>
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="mt-6 py-16 text-center bg-slate-50/50 rounded-2xl border border-slate-200">
+            <RefreshCw className="w-8 h-8 text-brand-600 animate-spin mx-auto mb-3" />
+            <h4 className="text-sm font-bold text-slate-800">Loading documents...</h4>
+            <p className="text-xs text-slate-500 mt-1">Retrieving verified statutory records from database</p>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <div className="mt-6 py-12 text-center bg-rose-50/40 rounded-2xl border border-rose-200 p-6 space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <h4 className="text-sm font-bold text-slate-900">{error}</h4>
+            <p className="text-xs text-slate-600">Please try again.</p>
+            <button
+              onClick={loadDocuments}
+              className="px-4 py-2 rounded-xl bg-brand-700 text-white font-bold text-xs hover:bg-brand-800 transition-all cursor-pointer inline-flex items-center space-x-1.5"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Retry</span>
+            </button>
+          </div>
+        )}
+
         {/* DOCUMENT CARDS:
             Document card must show:
             - Document name
@@ -497,154 +610,173 @@ export const DocumentChecklist = ({
             - Replace button
             - Delete button
         */}
-        <div className="mt-6 space-y-4">
-          {filteredDocs.map((doc) => {
-            const hasFile = Boolean(doc.fileName);
-            const isApproved = doc.status === 'APPROVED' || doc.status === 'VERIFIED';
-            const isRejected = doc.status === 'REJECTED';
+        {!loading && !error && (
+          <div className="mt-6 space-y-4">
+            {filteredDocs.map((doc) => {
+              const hasFile = Boolean(doc.fileName);
+              const isApproved = doc.status === 'APPROVED' || doc.status === 'VERIFIED';
+              const isRejected = doc.status === 'REJECTED';
 
-            return (
-              <div 
-                key={doc.id}
-                className={`p-5 rounded-2xl bg-white border transition-colors shadow-2xs ${
-                  isApproved 
-                    ? 'border-emerald-200 hover:border-emerald-300' 
-                    : isRejected 
-                      ? 'border-rose-200 hover:border-rose-300' 
-                      : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                  
-                  <div className="space-y-1.5 flex-1 min-w-0">
-                    {/* Title with status icon */}
-                    <div className="flex items-center space-x-2">
-                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                        isApproved
-                          ? 'bg-emerald-600 text-white'
-                          : isRejected
-                            ? 'bg-rose-600 text-white'
-                            : 'bg-slate-100 text-slate-400 border border-slate-300'
-                      }`}>
-                        {isApproved ? (
-                          <Check className="w-3 h-3 stroke-[3]" />
-                        ) : isRejected ? (
-                          <X className="w-3 h-3 stroke-[3]" />
-                        ) : (
-                          "○"
-                        )}
-                      </span>
-                      <h4 className="text-sm font-bold text-slate-900">
-                        {doc.name}
-                      </h4>
-                      <span className="text-[10px] font-mono text-slate-400">
-                        ({doc.id})
-                      </span>
-                    </div>
-
-                    {/* Category */}
-                    <div className="text-xs text-slate-500 pl-7">
-                      <span className="font-semibold text-slate-700">Category: </span>
-                      {doc.category || 'General Identification'}
-                    </div>
-
-                    {/* Why required */}
-                    <div className="text-xs text-slate-600 leading-relaxed pl-7 pt-1">
-                      <span className="font-semibold text-slate-800">Why required: </span>
-                      {doc.whyRequired}
-                    </div>
-
-                    {/* File Name & File Size (Shown when file is uploaded) */}
-                    {hasFile && (
-                      <div className="mt-2.5 ml-7 flex flex-wrap items-center gap-2 pt-1">
-                        <div className={`inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl border text-xs font-semibold ${
-                          isApproved 
-                            ? 'bg-emerald-50 border-emerald-200 text-emerald-900' 
-                            : 'bg-rose-50 border-rose-200 text-rose-900'
+              return (
+                <div 
+                  key={doc.id}
+                  className={`p-5 rounded-2xl bg-white border transition-colors shadow-2xs ${
+                    isApproved 
+                      ? 'border-emerald-200 hover:border-emerald-300' 
+                      : isRejected 
+                        ? 'border-rose-200 hover:border-rose-300' 
+                        : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      {/* Title with status icon */}
+                      <div className="flex items-center space-x-2">
+                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                          isApproved
+                            ? 'bg-emerald-600 text-white'
+                            : isRejected
+                              ? 'bg-rose-600 text-white'
+                              : 'bg-slate-100 text-slate-400 border border-slate-300'
                         }`}>
-                          <FileText className={`w-4 h-4 shrink-0 ${isApproved ? 'text-emerald-600' : 'text-rose-600'}`} />
-                          <span className="truncate max-w-[240px] font-bold">{doc.fileName}</span>
-                          <span className="font-normal opacity-80">• {doc.fileSize}</span>
-                        </div>
-
-                        {/* Database record confirmation badge */}
-                        <div className="inline-flex items-center space-x-1 text-[11px] font-semibold text-slate-500">
-                          <Database className="w-3 h-3 text-slate-400" />
-                          <span>
-                            {isApproved 
-                              ? 'Record verified in database' 
-                              : 'No matching database record'}
-                          </span>
-                        </div>
+                          {isApproved ? (
+                            <Check className="w-3 h-3 stroke-[3]" />
+                          ) : isRejected ? (
+                            <X className="w-3 h-3 stroke-[3]" />
+                          ) : (
+                            "○"
+                          )}
+                        </span>
+                        <h4 className="text-sm font-bold text-slate-900">
+                          {doc.name}
+                        </h4>
+                        <span className="text-[10px] font-mono text-slate-400">
+                          ({doc.id})
+                        </span>
                       </div>
-                    )}
-                  </div>
 
-                  {/* Status badge and Action buttons */}
-                  <div className="sm:text-right shrink-0 pl-7 sm:pl-0 space-y-2.5">
-                    {/* Current status badge */}
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block sm:inline mr-2">
-                        Status:
-                      </span>
-                      <span className={`text-[10px] px-2.5 py-1 rounded-md border tracking-wider uppercase inline-flex items-center space-x-1 ${getStatusBadgeStyle(doc.status)}`}>
-                        {isApproved && <Check className="w-3 h-3 mr-0.5" />}
-                        {isRejected && <X className="w-3 h-3 mr-0.5" />}
-                        <span>{doc.status}</span>
-                      </span>
-                    </div>
+                      {/* Category */}
+                      <div className="text-xs text-slate-500 pl-7">
+                        <span className="font-semibold text-slate-700">Category: </span>
+                        {doc.category || 'General Identification'}
+                      </div>
 
-                    {/* Action buttons:
-                        - If no file uploaded: Upload Document button
-                        - If file uploaded: Replace button & Delete button
-                    */}
-                    <div>
-                      {!hasFile ? (
-                        <button
-                          onClick={() => handleTriggerUpload(doc.id)}
-                          className="px-4 py-2 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-bold text-xs shadow-xs transition-all flex items-center space-x-1.5 cursor-pointer active:scale-95"
-                        >
-                          <Upload className="w-3.5 h-3.5" />
-                          <span>Upload Document</span>
-                        </button>
-                      ) : (
-                        <div className="flex items-center space-x-2 justify-end">
-                          {/* Replace button */}
-                          <button
-                            onClick={() => handleTriggerUpload(doc.id)}
-                            className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors flex items-center space-x-1 cursor-pointer"
-                            title="Replace this uploaded document with another file"
-                          >
-                            <RefreshCw className="w-3 h-3 text-slate-500" />
-                            <span>Replace</span>
-                          </button>
+                      {/* Why required */}
+                      <div className="text-xs text-slate-600 leading-relaxed pl-7 pt-1">
+                        <span className="font-semibold text-slate-800">Why required: </span>
+                        {doc.whyRequired}
+                      </div>
 
-                          {/* Delete button */}
-                          <button
-                            onClick={() => handleDeleteFile(doc.id)}
-                            className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs border border-rose-200 transition-colors flex items-center space-x-1 cursor-pointer"
-                            title="Delete this document and reset status"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                            <span>Delete</span>
-                          </button>
+                      {/* File Name & File Size (Shown when file is uploaded) */}
+                      {hasFile && (
+                        <div className="mt-2.5 ml-7 flex flex-wrap items-center gap-2 pt-1">
+                          <div className={`inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl border text-xs font-semibold ${
+                            isApproved 
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-900' 
+                              : 'bg-rose-50 border-rose-200 text-rose-900'
+                          }`}>
+                            <FileText className={`w-4 h-4 shrink-0 ${isApproved ? 'text-emerald-600' : 'text-rose-600'}`} />
+                            <span className="truncate max-w-[240px] font-bold">{doc.fileName}</span>
+                            <span className="font-normal opacity-80">• {doc.fileSize}</span>
+                          </div>
+
+                          {/* Database record confirmation badge */}
+                          <div className="inline-flex items-center space-x-1 text-[11px] font-semibold text-slate-500">
+                            <Database className="w-3 h-3 text-slate-400" />
+                            <span>
+                              {isApproved 
+                                ? 'Record verified in database' 
+                                : 'No matching database record'}
+                            </span>
+                          </div>
                         </div>
                       )}
                     </div>
 
+                    {/* Status badge and Action buttons */}
+                    <div className="sm:text-right shrink-0 pl-7 sm:pl-0 space-y-2.5">
+                      {/* Current status badge */}
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block sm:inline mr-2">
+                          Status:
+                        </span>
+                        <span className={`text-[10px] px-2.5 py-1 rounded-md border tracking-wider uppercase inline-flex items-center space-x-1 ${getStatusBadgeStyle(doc.status)}`}>
+                          {isApproved && <Check className="w-3 h-3 mr-0.5" />}
+                          {isRejected && <X className="w-3 h-3 mr-0.5" />}
+                          <span>{doc.status}</span>
+                        </span>
+                      </div>
+
+                      {/* Action buttons:
+                          - If no file uploaded: Upload Document button
+                          - If file uploaded: Replace button & Delete button
+                      */}
+                      <div>
+                        {!hasFile ? (
+                          <button
+                            onClick={() => handleTriggerUpload(doc.id)}
+                            className="px-4 py-2 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-bold text-xs shadow-xs transition-all flex items-center space-x-1.5 cursor-pointer active:scale-95"
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Upload Document</span>
+                          </button>
+                        ) : (
+                          <div className="flex items-center space-x-2 justify-end">
+                            {/* Replace button */}
+                            <button
+                              onClick={() => handleTriggerUpload(doc.id)}
+                              className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors flex items-center space-x-1 cursor-pointer"
+                              title="Replace this uploaded document with another file"
+                            >
+                              <RefreshCw className="w-3 h-3 text-slate-500" />
+                              <span>Replace</span>
+                            </button>
+
+                            {/* Delete button */}
+                            <button
+                              onClick={() => handleDeleteFile(doc.id)}
+                              className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs border border-rose-200 transition-colors flex items-center space-x-1 cursor-pointer"
+                              title="Delete this document and reset status"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
+
                   </div>
-
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
 
-          {filteredDocs.length === 0 && (
-            <div className="py-8 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-              No documents found matching the "{activeFilter}" filter.
-            </div>
-          )}
-        </div>
+            {filteredDocs.length === 0 && (
+              totalCount === 0 ? (
+                <div className="py-12 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 p-6 space-y-3">
+                  <FileText className="w-10 h-10 text-slate-400 mx-auto" />
+                  <h4 className="text-sm font-bold text-slate-800">No documents uploaded yet.</h4>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    Required documents will appear here as you complete your application.
+                  </p>
+                  <button
+                    onClick={() => handleTriggerUpload(null)}
+                    className="px-4 py-2 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-bold text-xs transition-all inline-flex items-center space-x-1.5 cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload Document</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="py-8 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  No documents found matching the "{activeFilter}" filter.
+                </div>
+              )
+            )}
+          </div>
+        )}
 
       </div>
 
