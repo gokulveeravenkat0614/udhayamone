@@ -218,19 +218,24 @@ async function getPersonalContext(userId) {
   };
 }
 
+let isQuotaExhausted = false;
+
 function health(req, res) {
-  const aiConfigured = Boolean(process.env.OPENAI_API_KEY);
+  const hasKey = Boolean(process.env.OPENAI_API_KEY);
+  const isAvailable = hasKey && !isQuotaExhausted;
   return res.json({
     success: true,
-    aiConfigured,
-    providerReachable: aiConfigured
+    aiConfigured: isAvailable,
+    providerReachable: isAvailable
   });
 }
 
 function config(req, res) {
+  const hasKey = Boolean(process.env.OPENAI_API_KEY);
+  const isAvailable = hasKey && !isQuotaExhausted;
   return res.json({
     success: true,
-    aiConfigured: Boolean(process.env.OPENAI_API_KEY)
+    aiConfigured: isAvailable
   });
 }
 
@@ -358,7 +363,15 @@ ${JSON.stringify(personalContext, null, 2)}
     const errorStatus = error.status || error.statusCode || 500;
     const errorMessage = error.message || String(error);
     const errorCode = error.code || error.error?.code || null;
-    const isQuota = errorCode === 'insufficient_quota' || errorMessage.toLowerCase().includes('quota');
+    const errorType = error.type || error.error?.type || null;
+    const isQuota = (
+      errorCode === 'insufficient_quota' ||
+      errorCode === 'credit_balance_exhausted' ||
+      errorType === 'insufficient_quota' ||
+      errorMessage.toLowerCase().includes('quota') ||
+      errorMessage.toLowerCase().includes('credits') ||
+      errorMessage.toLowerCase().includes('billing')
+    );
 
     if (errorStatus === 401 || errorMessage.includes('401') || errorMessage.toLowerCase().includes('api key')) {
       console.error('[AI Provider] AI_PROVIDER_AUTH_FAILED: Authentication with OpenAI failed. Check OPENAI_API_KEY validity.', errorMessage);
@@ -370,11 +383,12 @@ ${JSON.stringify(personalContext, null, 2)}
     }
 
     if (isQuota) {
-      console.error('[AI Provider] AI_PROVIDER_QUOTA_EXCEEDED: OpenAI API quota exceeded.', errorMessage);
+      isQuotaExhausted = true;
+      console.error('[AI Provider] AI_PROVIDER_QUOTA_EXCEEDED: OpenAI credit balance exhausted or quota reached.', errorMessage);
       return res.status(429).json({
         success: false,
         code: 'AI_PROVIDER_QUOTA_EXCEEDED',
-        message: 'AI service quota exceeded. Please check OpenAI account billing or API key.'
+        message: 'AI service is temporarily unavailable.'
       });
     }
 
@@ -383,7 +397,7 @@ ${JSON.stringify(personalContext, null, 2)}
       return res.status(429).json({
         success: false,
         code: 'AI_PROVIDER_RATE_LIMITED',
-        message: 'AI service is busy. Please try again shortly.'
+        message: 'AI service rate limit reached. Please try again shortly.'
       });
     }
 
@@ -400,7 +414,7 @@ ${JSON.stringify(personalContext, null, 2)}
     return res.status(500).json({
       success: false,
       code: 'AI_PROVIDER_REQUEST_FAILED',
-      message: 'AI service is temporarily unavailable.'
+      message: 'AI service encountered an internal error.'
     });
   }
 }
@@ -427,107 +441,5 @@ async function history(req, res) {
   }
 }
 
-async function diagnostic(req, res) {
-  const hasKey = Boolean(process.env.OPENAI_API_KEY);
-  const keyLength = process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.trim().length : 0;
-  const keyPrefix = process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.trim().slice(0, 7) : '';
-  const configuredModel = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-
-  if (!hasKey) {
-    return res.json({
-      success: false,
-      hasKey: false,
-      message: 'OPENAI_API_KEY is not set in environment'
-    });
-  }
-
-  const client = getOpenAIClient();
-  if (!client) {
-    return res.json({
-      success: false,
-      hasKey: true,
-      message: 'Failed to instantiate OpenAI client'
-    });
-  }
-
-  const results = {
-    hasKey: true,
-    keyLength,
-    keyPrefix,
-    configuredModel,
-    tests: {}
-  };
-
-  // Test 1: Tiny test completion with configuredModel
-  try {
-    const t0 = Date.now();
-    const completion = await client.chat.completions.create({
-      model: configuredModel,
-      messages: [{ role: 'user', content: 'Say hello' }],
-      max_tokens: 5
-    });
-    results.tests.configuredModel = {
-      success: true,
-      durationMs: Date.now() - t0,
-      reply: (completion.choices?.[0]?.message?.content || '').trim()
-    };
-  } catch (err) {
-    results.tests.configuredModel = {
-      success: false,
-      status: err.status || err.statusCode || null,
-      code: err.code || err.error?.code || null,
-      type: err.type || err.error?.type || null,
-      message: String(err.message || '').replace(/sk-[a-zA-Z0-9_-]+/g, '[REDACTED]'),
-      errorDetails: err.error || null
-    };
-  }
-
-  // Test 2: Try gpt-3.5-turbo if configuredModel failed
-  if (!results.tests.configuredModel.success) {
-    try {
-      const t0 = Date.now();
-      const completion = await client.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [{ role: 'user', content: 'Say hello' }],
-        max_tokens: 5
-      });
-      results.tests.gpt35 = {
-        success: true,
-        durationMs: Date.now() - t0,
-        reply: (completion.choices?.[0]?.message?.content || '').trim()
-      };
-    } catch (err) {
-      results.tests.gpt35 = {
-        success: false,
-        status: err.status || err.statusCode || null,
-        code: err.code || err.error?.code || null,
-        type: err.type || err.error?.type || null,
-        message: String(err.message || '').replace(/sk-[a-zA-Z0-9_-]+/g, '[REDACTED]')
-      };
-    }
-  }
-
-  // Test 3: List models if completions failed
-  if (!results.tests.configuredModel.success && (!results.tests.gpt35 || !results.tests.gpt35.success)) {
-    try {
-      const modelList = await client.models.list();
-      results.tests.modelsList = {
-        success: true,
-        count: modelList?.data?.length || 0,
-        availableSample: (modelList?.data || []).slice(0, 5).map(m => m.id)
-      };
-    } catch (err) {
-      results.tests.modelsList = {
-        success: false,
-        status: err.status || null,
-        code: err.code || null,
-        message: String(err.message || '').replace(/sk-[a-zA-Z0-9_-]+/g, '[REDACTED]')
-      };
-    }
-  }
-
-  return res.json(results);
-}
-
-module.exports = { chat, history, config, health, diagnostic };
+module.exports = { chat, history, config, health };
 

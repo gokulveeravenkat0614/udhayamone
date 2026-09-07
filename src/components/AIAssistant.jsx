@@ -258,17 +258,18 @@ export function AIAssistant({
       const status = err.status || err.statusCode || err.response?.status;
       const code = err.response?.data?.code || err.data?.code;
 
-      if (status === 401) {
+      if (status === 401 || status === 403) {
         setError('Please sign in again.');
       } else if (status === 404) {
         setError('AI service endpoint is unavailable.');
       } else if (status === 429) {
         if (code === 'AI_PROVIDER_QUOTA_EXCEEDED') {
-          setError('AI service quota exceeded. Please check OpenAI billing or API key.');
+          setAiConfigured(false);
+          setError('AI service is temporarily unavailable.');
         } else {
           setError('AI service is busy. Please try again shortly.');
         }
-      } else if (status === 503 || code === 'AI_PROVIDER_CONFIGURATION_MISSING' || code === 'AI_NOT_CONFIGURED') {
+      } else if (status === 502 || status === 503 || code === 'AI_PROVIDER_CONFIGURATION_MISSING' || code === 'AI_NOT_CONFIGURED') {
         setAiConfigured(false);
         setError('AI service is temporarily unavailable.');
       } else if (status === 500) {

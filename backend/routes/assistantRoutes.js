@@ -1,12 +1,9 @@
 const express = require('express');
 const auth = require('../middleware/authMiddleware');
 const optionalAuth = require('../middleware/optionalAuthMiddleware');
-const { chat, history, config, health, diagnostic } = require('../controllers/assistantController');
+const { chat, history, config, health } = require('../controllers/assistantController');
 
 const router = express.Router();
-
-// Temporary diagnostic endpoint to test OpenAI connectivity and retrieve real error statuses safely
-router.get('/diagnostic', diagnostic);
 
 // AI health check endpoint (returns success, aiConfigured, providerReachable without leaking secrets)
 router.get('/health', health);
