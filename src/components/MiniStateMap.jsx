@@ -74,20 +74,23 @@ export const MiniStateMap = ({
   // Filter verified areas that have valid geographic coordinates
   // STRICT COMPLIANCE: Never plot fake coordinates.
   const validPins = useMemo(() => {
-    return areas.filter(a => {
-      const lat = typeof a.latitude === 'number' ? a.latitude : (a.coordinates && a.coordinates.lat);
-      const lng = typeof a.longitude === 'number' ? a.longitude : (a.coordinates && a.coordinates.lng);
+    const list = Array.isArray(areas) ? areas : [];
+    return list.filter(a => {
+      if (!a) return false;
+      const lat = typeof a.latitude === 'number' ? a.latitude : (a.coordinates && typeof a.coordinates.lat === 'number' ? a.coordinates.lat : null);
+      const lng = typeof a.longitude === 'number' ? a.longitude : (a.coordinates && typeof a.coordinates.lng === 'number' ? a.coordinates.lng : null);
       return typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng);
     }).map(a => {
       const lat = typeof a.latitude === 'number' ? a.latitude : a.coordinates.lat;
       const lng = typeof a.longitude === 'number' ? a.longitude : a.coordinates.lng;
-      const pt = projectGeoPoint(lat, lng, stateBoundary.bounds, SVG_WIDTH, SVG_HEIGHT, SVG_PADDING);
+      const bounds = stateBoundary?.bounds;
+      const pt = projectGeoPoint(lat, lng, bounds, SVG_WIDTH, SVG_HEIGHT, SVG_PADDING);
       return {
         ...a,
         geoLat: lat,
         geoLng: lng,
-        svgX: pt.x,
-        svgY: pt.y
+        svgX: pt ? pt.x : SVG_WIDTH / 2,
+        svgY: pt ? pt.y : SVG_HEIGHT / 2
       };
     });
   }, [areas, stateBoundary]);
@@ -455,7 +458,9 @@ export const MiniStateMap = ({
                 <span className="text-[11px] text-slate-400 flex items-center space-x-1">
                   <MapPin className="w-3 h-3 text-brand-400" />
                   <span>
-                    {(activePin.geoLat || activePin.coordinates?.lat)?.toFixed(3)}°N, {(activePin.geoLng || activePin.coordinates?.lng)?.toFixed(3)}°E
+                    {typeof (activePin?.geoLat ?? activePin?.coordinates?.lat) === 'number' && typeof (activePin?.geoLng ?? activePin?.coordinates?.lng) === 'number'
+                      ? `${(activePin.geoLat ?? activePin.coordinates?.lat).toFixed(3)}°N, ${(activePin.geoLng ?? activePin.coordinates?.lng).toFixed(3)}°E`
+                      : 'Location unavailable'}
                   </span>
                 </span>
               </div>

@@ -12,23 +12,22 @@ export const IndustryAreaMap = ({
   const [activeMarkerId, setActiveMarkerId] = useState(selectedAreaId);
 
   // Filter only areas that have valid verified coordinates
-  const mappedAreas = areas.filter(
-    a => a.coordinates && typeof a.coordinates.lat === 'number' && typeof a.coordinates.lng === 'number'
+  const safeAreas = Array.isArray(areas) ? areas : [];
+  const mappedAreas = safeAreas.filter(
+    a => a && a.coordinates && typeof a.coordinates.lat === 'number' && typeof a.coordinates.lng === 'number'
   );
 
-  const unmappedCount = areas.length - mappedAreas.length;
+  const unmappedCount = safeAreas.length - mappedAreas.length;
 
-  const activeMarker = mappedAreas.find(a => String(a._id) === String(activeMarkerId)) || mappedAreas[0];
+  const activeMarker = mappedAreas.find(a => a && String(a._id) === String(activeMarkerId)) || mappedAreas[0];
 
   // Calculate bounding box for dynamic SVG plotting
   let minLat = 8.0, maxLat = 30.0, minLng = 68.0, maxLng = 88.0;
   if (mappedAreas.length > 0) {
-    const lats = mappedAreas.map(a => a.coordinates.lat);
-    const lngs = mappedAreas.map(a => a.coordinates.lng);
-    minLat = Math.min(...lats) - 1.2;
-    maxLat = Math.max(...lats) + 1.2;
-    minLng = Math.min(...lngs) - 1.5;
-    maxLng = Math.max(...lngs) + 1.5;
+    minLat = mappedAreas.reduce((min, a) => Math.min(min, a.coordinates.lat), Infinity) - 1.2;
+    maxLat = mappedAreas.reduce((max, a) => Math.max(max, a.coordinates.lat), -Infinity) + 1.2;
+    minLng = mappedAreas.reduce((min, a) => Math.min(min, a.coordinates.lng), Infinity) - 1.5;
+    maxLng = mappedAreas.reduce((max, a) => Math.max(max, a.coordinates.lng), -Infinity) + 1.5;
   }
 
   // Normalize lat/lng to SVG viewport [100, 500] width, [50, 350] height

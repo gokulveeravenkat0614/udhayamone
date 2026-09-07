@@ -816,6 +816,18 @@ const server = app.listen(5098, async () => {
     assert(aiConfig.statusCode === 200, "GET /api/ai/config returns HTTP 200");
     assert(typeof aiConfig.data?.aiConfigured === 'boolean', "GET /api/ai/config returns aiConfigured boolean");
 
+    // 7.9 Industry Areas root fallback API access with query param
+    const rootAreasRes = await makeJsonRequest({ path: '/industry-areas?state=Maharashtra' });
+    assert(rootAreasRes.statusCode === 200 && rootAreasRes.data?.success === true, "GET /industry-areas?state=Maharashtra root fallback returns HTTP 200");
+    assert(rootAreasRes.data?.count >= 6, "Root fallback returns verified areas");
+
+    // 7.10 Industry Areas browser HTML navigation does not return HTTP 400 JSON error
+    const htmlNavRes = await makeJsonRequest({
+      path: '/industry-areas',
+      headers: { Accept: 'text/html,application/xhtml+xml' }
+    });
+    assert(htmlNavRes.statusCode !== 400, "GET /industry-areas HTML navigation does not fail with 400 state-required JSON");
+
     server.close(() => {
       console.log("\n=======================================================");
       console.log(`🏁 INTEGRATION RESULTS: ${passed} PASSED, ${failed} FAILED`);

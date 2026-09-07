@@ -78,12 +78,14 @@ export const IndustryAreaEligibility = ({
         setAreas(res.areas);
       } else if (Array.isArray(res)) {
         setAreas(res);
+      } else if (res && Array.isArray(res.data)) {
+        setAreas(res.data);
       } else {
         setAreas([]);
       }
     } catch (err) {
       console.error('Failed to load industry areas:', err);
-      setError('Unable to load industry-area information. Please try again.');
+      setError('Unable to load Industry Areas.');
       setAreas([]);
     } finally {
       setLoading(false);
@@ -139,17 +141,22 @@ export const IndustryAreaEligibility = ({
     }
   };
 
+  // Safe area records array (never undefined or null)
+  const safeAreas = Array.isArray(areas) ? areas : [];
+
   // Stats for the active view
-  const redCount = areas.filter(a => a.category === 'RED').length;
-  const orangeCount = areas.filter(a => a.category === 'ORANGE').length;
-  const greenCount = areas.filter(a => a.category === 'GREEN').length;
+  const redCount = safeAreas.filter(a => a?.category === 'RED').length;
+  const orangeCount = safeAreas.filter(a => a?.category === 'ORANGE').length;
+  const greenCount = safeAreas.filter(a => a?.category === 'GREEN').length;
+  const whiteCount = safeAreas.filter(a => a?.category === 'WHITE').length;
+
   // Reusable cards content renderer
   const renderCardsContent = (isSplit = false) => {
     if (loading) {
       return (
         <div className="py-20 text-center bg-white rounded-3xl border border-slate-200 shadow-soft">
           <RefreshCw className="w-9 h-9 text-brand-600 animate-spin mx-auto mb-3" />
-          <h4 className="text-base font-bold text-slate-900">Loading verified industry areas...</h4>
+          <h4 className="text-base font-bold text-slate-900">Loading Industry Areas...</h4>
           <p className="text-xs text-slate-500 mt-1">Retrieving official SPCB siting criteria and zoning records from database</p>
         </div>
       );
@@ -161,13 +168,13 @@ export const IndustryAreaEligibility = ({
           <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center mx-auto">
             <AlertCircle className="w-6 h-6" />
           </div>
-          <h4 className="text-base font-bold text-slate-900">{error}</h4>
+          <h4 className="text-base font-bold text-slate-900">Unable to load Industry Areas.</h4>
           <p className="text-xs text-slate-600 max-w-md mx-auto">
             Please check your connection and click retry.
           </p>
           <button
             onClick={loadAreas}
-            className="px-4 py-2 rounded-xl bg-brand-700 text-white font-bold text-xs hover:bg-brand-800 transition-all inline-flex items-center space-x-1.5 cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-brand-700 text-white font-bold text-xs hover:bg-brand-800 transition-all inline-flex items-center space-x-1.5 cursor-pointer shadow-sm"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Retry</span>
@@ -176,17 +183,17 @@ export const IndustryAreaEligibility = ({
       );
     }
 
-    if (areas.length === 0) {
+    if (safeAreas.length === 0) {
       return (
         <div className="py-16 text-center bg-white rounded-3xl border border-slate-200 shadow-soft p-8 space-y-4 max-w-2xl mx-auto">
           <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto border border-amber-200">
             <AlertCircle className="w-7 h-7" />
           </div>
           <h3 className="text-lg font-bold text-slate-900">
-            Verified area-specific information is currently unavailable for {selectedState}.
+            No industry areas available.
           </h3>
           <p className="text-xs text-slate-600 leading-relaxed">
-            Verified area-specific information is currently unavailable for this state. Please verify with the concerned State Pollution Control Board/local authority.
+            Verified area-specific information is currently unavailable for {selectedState || 'this state'}. Please verify with the concerned State Pollution Control Board/local authority.
           </p>
           <div className="pt-2 flex flex-wrap justify-center gap-2">
             <button
@@ -218,7 +225,7 @@ export const IndustryAreaEligibility = ({
           <h3 className="text-lg font-black text-slate-900 flex items-center space-x-2">
             <span>Verified Eligible Industrial Areas in {selectedState}</span>
             <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200">
-              {areas.length} Estates
+              {safeAreas.length} Estates
             </span>
           </h3>
           <span className="text-xs text-slate-400 font-medium">
@@ -227,7 +234,7 @@ export const IndustryAreaEligibility = ({
         </div>
 
         <div className={isSplit ? "grid grid-cols-1 gap-4" : "grid grid-cols-1 md:grid-cols-2 gap-5"}>
-          {areas.map((area) => {
+          {safeAreas.map((area) => {
             const categoryConfig = POLLUTION_CATEGORIES[area.category] || POLLUTION_CATEGORIES.ORANGE;
             const statusConfig = getStatusBadge(area.eligibilityStatus);
             const StatusIcon = statusConfig.icon;
@@ -338,7 +345,7 @@ export const IndustryAreaEligibility = ({
 
                     {!hasCoords && (
                       <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-medium border border-slate-200">
-                        Location coordinates unavailable
+                        Location unavailable
                       </span>
                     )}
                   </div>
@@ -563,7 +570,7 @@ export const IndustryAreaEligibility = ({
               }`}
             >
               <span className="block text-[10px] text-slate-400 uppercase tracking-wider">All Categories</span>
-              <span className="text-base font-black mt-0.5 block">{areas.length} Areas</span>
+              <span className="text-base font-black mt-0.5 block">{safeAreas.length} Areas</span>
             </button>
 
             <button

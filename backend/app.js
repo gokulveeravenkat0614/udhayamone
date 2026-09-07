@@ -69,7 +69,14 @@ app.use('/documents', documentRoutes);
 app.use('/applications', applicationRoutes);
 app.use('/assistant', assistantRoutes);
 app.use('/ai', assistantRoutes);
-app.use('/industry-areas', industryAreaRoutes);
+
+// For /industry-areas root fallback: let browser HTML navigation fall through to static SPA server
+app.use('/industry-areas', (req, res, next) => {
+  if (req.method === 'GET' && req.accepts('html') && !req.query.state && !req.xhr && !req.headers['x-requested-with']) {
+    return next();
+  }
+  return industryAreaRoutes(req, res, next);
+});
 
 app.use('/uploads', express.static(uploadsDir));
 
