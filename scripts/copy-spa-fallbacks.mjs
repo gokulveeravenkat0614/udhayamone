@@ -23,6 +23,7 @@ if (fs.existsSync(indexHtmlPath)) {
     'officer',
     'compliance',
     'schemes',
+    'industry-areas',
     'wizard',
     'help'
   ];

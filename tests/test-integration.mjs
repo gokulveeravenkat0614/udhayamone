@@ -614,6 +614,141 @@ const server = app.listen(5098, async () => {
     assert(authedHistory.statusCode === 200 && Array.isArray(authedHistory.data?.records), "GET /api/verification/history returns records list");
     assert(authedHistory.data?.records.length >= 1, "Verification history records contain newly submitted verification");
 
+    // =========================================================
+    // 6. INDUSTRY AREA ELIGIBILITY REST APIS & SITING RULES
+    // =========================================================
+    console.log("\n▶ TEST SUITE 6: Industry Area Eligibility API & Siting Rules");
+
+    // 6.1 GET /api/industry-areas/states returns supported states list
+    const statesRes = await makeJsonRequest({ path: '/api/industry-areas/states' });
+    assert(statesRes.statusCode === 200 && statesRes.data?.success === true, "GET /api/industry-areas/states returns HTTP 200 with success:true");
+    assert(Array.isArray(statesRes.data?.states) && statesRes.data?.states.length >= 8, "Supported states list contains all 8 website states/UTs");
+    const mhState = statesRes.data?.states.find(s => s.name === 'Maharashtra');
+    assert(mhState && mhState.hasVerifiedData === true && mhState.verifiedCount >= 6, "Maharashtra has verified industry areas available");
+
+    // 6.2 GET /api/industry-areas rejects request missing mandatory state query param
+    const noStateRes = await makeJsonRequest({ path: '/api/industry-areas' });
+    assert(noStateRes.statusCode === 400 && noStateRes.data?.success === false, "GET /api/industry-areas returns HTTP 400 when state param is omitted");
+
+    // 6.3 GET /api/industry-areas?state=Maharashtra returns all verified records in state
+    const mhAreasRes = await makeJsonRequest({ path: '/api/industry-areas?state=Maharashtra' });
+    assert(mhAreasRes.statusCode === 200 && mhAreasRes.data?.success === true, "GET /api/industry-areas?state=Maharashtra returns HTTP 200");
+    assert(mhAreasRes.data?.count >= 6, `Maharashtra returned all verified area records (${mhAreasRes.data?.count} found)`);
+
+    // 6.4 Category Filter: RED returns strictly RED category records
+    const redAreasRes = await makeJsonRequest({ path: '/api/industry-areas?state=Maharashtra&category=RED' });
+    assert(redAreasRes.statusCode === 200 && redAreasRes.data?.areas.length >= 2, "GET /api/industry-areas with category=RED returns records");
+    assert(redAreasRes.data?.areas.every(a => a.category === 'RED'), "All returned areas have category === 'RED'");
+
+    // 6.5 Category Filter: ORANGE returns strictly ORANGE category records
+    const orangeAreasRes = await makeJsonRequest({ path: '/api/industry-areas?state=Maharashtra&category=ORANGE' });
+    assert(orangeAreasRes.statusCode === 200 && orangeAreasRes.data?.areas.length >= 2, "GET /api/industry-areas with category=ORANGE returns records");
+    assert(orangeAreasRes.data?.areas.every(a => a.category === 'ORANGE'), "All returned areas have category === 'ORANGE'");
+
+    // 6.6 Category Filter: WHITE returns strictly WHITE category records
+    const whiteAreasRes = await makeJsonRequest({ path: '/api/industry-areas?state=Maharashtra&category=WHITE' });
+    assert(whiteAreasRes.statusCode === 200 && whiteAreasRes.data?.areas.length >= 1, "GET /api/industry-areas with category=WHITE returns records");
+    assert(whiteAreasRes.data?.areas.every(a => a.category === 'WHITE'), "All returned areas have category === 'WHITE'");
+
+    // 6.7 District + Category combination filter
+    const puneOrangeRes = await makeJsonRequest({ path: '/api/industry-areas?state=Maharashtra&district=Pune&category=ORANGE' });
+    assert(puneOrangeRes.statusCode === 200 && puneOrangeRes.data?.areas.length >= 1, "GET /api/industry-areas with state=Maharashtra&district=Pune&category=ORANGE returns matching records");
+    assert(puneOrangeRes.data?.areas.every(a => a.district === 'Pune' && a.category === 'ORANGE'), "Returned areas strictly match Pune district and ORANGE category");
+
+    // 6.8 Free-text and industry search
+    const searchRes = await makeJsonRequest({ path: '/api/industry-areas/search?industry=Pharmaceutical' });
+    assert(searchRes.statusCode === 200 && searchRes.data?.success === true, "GET /api/industry-areas/search?industry=Pharmaceutical returns HTTP 200");
+    assert(searchRes.data?.count >= 1, "Search returns industry-specific areas");
+
+    // 6.9 Regulatory Data Completeness: every record contains mandatory fields
+    const sampleArea = mhAreasRes.data?.areas[0];
+    assert(sampleArea && Boolean(sampleArea.industrialArea), "Area record contains industrialArea name");
+    assert(Boolean(sampleArea.authority), "Area record contains authority/SPCB");
+    assert(Boolean(sampleArea.sourceTitle), "Area record contains official sourceTitle");
+    assert(Boolean(sampleArea.conditions), "Area record contains statutory siting conditions");
+    assert(Boolean(sampleArea.lastVerifiedAt), "Area record contains lastVerifiedAt date");
+
+    // 6.10 Rule 2: Unonboarded state returns empty results (zero fake data)
+    const otherStatesRes = await makeJsonRequest({ path: '/api/industry-areas?state=Other%20States' });
+    assert(otherStatesRes.statusCode === 200 && otherStatesRes.data?.count === 0, "Unonboarded state strictly returns 0 fake records");
+
+    // 6.11 Admin Data Management: Rejects unauthenticated creation
+    const unauthedCreate = await makeJsonRequest({
+      path: '/api/industry-areas',
+      method: 'POST',
+      body: { state: 'Maharashtra', district: 'Pune', industrialArea: 'Test Area', category: 'GREEN' }
+    });
+    assert(unauthedCreate.statusCode === 401, "POST /api/industry-areas rejects unauthenticated request (HTTP 401)");
+
+    // 6.12 Admin Data Management: Rejects non-admin user
+    const nonAdminCreate = await makeJsonRequest({
+      path: '/api/industry-areas',
+      method: 'POST',
+      headers: { Authorization: `Bearer ${demoToken}` },
+      body: { state: 'Maharashtra', district: 'Pune', industrialArea: 'Test Area', category: 'GREEN' }
+    });
+    assert(nonAdminCreate.statusCode === 403, "POST /api/industry-areas rejects non-admin client (HTTP 403)");
+
+    // 6.13 Admin Data Management: Admin creates a verified record
+    const adminLogin = await makeJsonRequest({
+      path: '/api/auth/login',
+      method: 'POST',
+      body: { email: 'admin@udyamone.test', password: 'Admin@123' }
+    });
+    assert(adminLogin.statusCode === 200 && adminLogin.data?.token, "Admin login succeeds with demo admin credentials");
+    const adminToken = adminLogin.data?.token;
+
+    // Rule 9: Reject incomplete record
+    const incompleteCreate = await makeJsonRequest({
+      path: '/api/industry-areas',
+      method: 'POST',
+      headers: { Authorization: `Bearer ${adminToken}` },
+      body: { state: 'Maharashtra', industrialArea: 'Incomplete Area' }
+    });
+    assert(incompleteCreate.statusCode === 400, "POST /api/industry-areas rejects incomplete record missing mandatory fields (HTTP 400)");
+
+    // Complete verified record creation
+    const validCreate = await makeJsonRequest({
+      path: '/api/industry-areas',
+      method: 'POST',
+      headers: { Authorization: `Bearer ${adminToken}` },
+      body: {
+        state: 'Maharashtra',
+        district: 'Pune',
+        industrialArea: 'Talegaon Industrial Park (Phase II)',
+        category: 'GREEN',
+        industryType: ['Electronics', 'Renewable Energy'],
+        eligibilityStatus: 'Allowed',
+        conditions: 'Permitted for dry electronics assembly and solar equipment manufacturing. Zero trade effluent discharge.',
+        authority: 'Maharashtra Pollution Control Board (MPCB)',
+        sourceTitle: 'MPCB Industrial Siting Guidelines 2026',
+        sourceUrl: 'https://mpcb.gov.in',
+        lastVerifiedAt: '2026-03-01'
+      }
+    });
+    assert(validCreate.statusCode === 201 && validCreate.data?.area?._id, "Admin successfully creates new verified industry area record (HTTP 201)");
+    const createdAreaId = validCreate.data?.area?._id;
+
+    // 6.14 Admin Data Management: Update existing record
+    const updateRes = await makeJsonRequest({
+      path: `/api/industry-areas/${createdAreaId}`,
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${adminToken}` },
+      body: {
+        eligibilityStatus: 'Conditional',
+        conditions: 'Updated: Connection to common rain harvesting system and dry assembly strictly enforced.'
+      }
+    });
+    assert(updateRes.statusCode === 200 && updateRes.data?.area?.eligibilityStatus === 'Conditional', "Admin successfully updates industrial area record (HTTP 200)");
+
+    // 6.15 Admin Data Management: Delete outdated record
+    const deleteRes = await makeJsonRequest({
+      path: `/api/industry-areas/${createdAreaId}`,
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${adminToken}` }
+    });
+    assert(deleteRes.statusCode === 200 && deleteRes.data?.success === true, "Admin successfully deletes outdated industrial area record (HTTP 200)");
+
     server.close(() => {
       console.log("\n=======================================================");
       console.log(`🏁 INTEGRATION RESULTS: ${passed} PASSED, ${failed} FAILED`);

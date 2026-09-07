@@ -18,6 +18,13 @@ import {
   filterDocuments,
   extractDocumentsFromResponse
 } from '../src/services/documentChecklistHelper.js';
+import {
+  POLLUTION_CATEGORIES,
+  detectIndustryPollutionCategory,
+  formatVerificationDate,
+  isRecordOutdated
+} from '../src/services/industryAreaHelper.js';
+import { SEED_INDUSTRY_AREAS } from '../backend/data/seedIndustryAreas.js';
 
 let passed = 0;
 let failed = 0;
@@ -477,6 +484,98 @@ assert(extractDocumentsFromResponse({ documents: rawArr }).length === 2, "Respon
 assert(extractDocumentsFromResponse({ data: { documents: rawArr } }).length === 2, "Response extractor parses { data: { documents: [] } }");
 assert(extractDocumentsFromResponse({ data: rawArr }).length === 2, "Response extractor parses { data: [] }");
 assert(extractDocumentsFromResponse(null).length === 0, "Response extractor gracefully handles null");
+
+// TEST SUITE 18: STATE-WISE INDUSTRY AREA ELIGIBILITY & SITING REGULATIONS
+console.log("\n▶ TEST SUITE 18: State-Wise Industry Area Eligibility & Siting Regulations");
+
+// 1. Reusing website master state list (Rule 2)
+const supportedStates = Object.keys(STATES_AND_DISTRICTS);
+assert(supportedStates.includes("Maharashtra"), "Master states includes Maharashtra");
+assert(supportedStates.includes("Tamil Nadu"), "Master states includes Tamil Nadu");
+assert(supportedStates.includes("Gujarat"), "Master states includes Gujarat");
+assert(supportedStates.includes("Karnataka"), "Master states includes Karnataka");
+assert(supportedStates.includes("Telangana"), "Master states includes Telangana");
+assert(supportedStates.includes("Andhra Pradesh"), "Master states includes Andhra Pradesh");
+assert(supportedStates.includes("Delhi"), "Master states includes Delhi");
+assert(supportedStates.includes("Other States"), "Master states includes Other States");
+
+// 2. Pollution categories (Rule 3)
+assert(POLLUTION_CATEGORIES.RED !== undefined, "Pollution category RED defined with metadata");
+assert(POLLUTION_CATEGORIES.ORANGE !== undefined, "Pollution category ORANGE defined with metadata");
+assert(POLLUTION_CATEGORIES.GREEN !== undefined, "Pollution category GREEN defined with metadata");
+assert(POLLUTION_CATEGORIES.WHITE !== undefined, "Pollution category WHITE defined with metadata");
+
+// 3. Industry CPCB Categorization detection (Rule 4)
+const chemCat = detectIndustryPollutionCategory("Chemical Industry");
+assert(chemCat && chemCat.category === 'RED', "Chemical Industry categorized as RED");
+
+const pharmaCat = detectIndustryPollutionCategory("Pharmaceutical");
+assert(pharmaCat && pharmaCat.category === 'RED', "Pharmaceutical categorized as RED");
+
+const foodCat = detectIndustryPollutionCategory("Food Processing");
+assert(foodCat && foodCat.category === 'ORANGE', "Food Processing categorized as ORANGE");
+
+const autoCat = detectIndustryPollutionCategory("Automobile");
+assert(autoCat && autoCat.category === 'ORANGE', "Automobile categorized as ORANGE");
+
+const agroCat = detectIndustryPollutionCategory("Agriculture Processing");
+assert(agroCat && agroCat.category === 'GREEN', "Agriculture Processing categorized as GREEN");
+
+const itCat = detectIndustryPollutionCategory("Information Technology");
+assert(itCat && itCat.category === 'WHITE', "Information Technology categorized as WHITE");
+
+const customClean = detectIndustryPollutionCategory("Software Development & AI Lab");
+assert(customClean && customClean.category === 'WHITE', "Software Development heuristic maps to WHITE");
+
+const customPolluting = detectIndustryPollutionCategory("Acid pickling & electroplating");
+assert(customPolluting && customPolluting.category === 'RED', "Acid pickling heuristic maps to RED");
+
+// 4. Data validation & completeness (Rule 9: No fake/incomplete records)
+assert(SEED_INDUSTRY_AREAS.length >= 20, `Seed database contains rich verified regulatory area records (${SEED_INDUSTRY_AREAS.length} found)`);
+
+SEED_INDUSTRY_AREAS.forEach((rec, idx) => {
+  assert(Boolean(rec.state), `Record #${idx + 1} (${rec.industrialArea}) has mandatory State`);
+  assert(Boolean(rec.district), `Record #${idx + 1} has mandatory District`);
+  assert(Boolean(rec.industrialArea), `Record #${idx + 1} has mandatory Industrial Area`);
+  assert(['RED', 'ORANGE', 'GREEN', 'WHITE'].includes(rec.category), `Record #${idx + 1} has valid category (${rec.category})`);
+  assert(Boolean(rec.authority), `Record #${idx + 1} has mandatory Regulatory Authority/SPCB`);
+  assert(Boolean(rec.sourceTitle), `Record #${idx + 1} has mandatory Official Source Title`);
+  assert(Boolean(rec.conditions), `Record #${idx + 1} has statutory siting conditions`);
+  assert(rec.lastVerifiedAt instanceof Date && !isNaN(rec.lastVerifiedAt.getTime()), `Record #${idx + 1} has valid Date instance for lastVerifiedAt`);
+  assert(supportedStates.includes(rec.state), `Record #${idx + 1} state '${rec.state}' exists in website master state list`);
+});
+
+// 5. Date formatting & freshness checking (Rule 12)
+const formattedSample = formatVerificationDate("2026-01-15T00:00:00.000Z");
+assert(formattedSample === "15/01/2026", `Date formatted as DD/MM/YYYY (${formattedSample})`);
+
+const isFresh = isRecordOutdated("2026-01-01", 18);
+assert(isFresh === false, "Recent verification date (2026) is tagged as fresh/current");
+
+const isOld = isRecordOutdated("2020-01-01", 18);
+assert(isOld === true, "Outdated record (2020) is tagged as 'Verification required'");
+
+// 6. Category filtering over real seed records (Rule 3)
+const mhRed = SEED_INDUSTRY_AREAS.filter(a => a.state === 'Maharashtra' && a.category === 'RED');
+assert(mhRed.length >= 2, `Maharashtra has verified RED areas (${mhRed.length} found)`);
+assert(mhRed.every(a => a.category === 'RED'), "RED filter only contains RED category records");
+
+const mhOrange = SEED_INDUSTRY_AREAS.filter(a => a.state === 'Maharashtra' && a.category === 'ORANGE');
+assert(mhOrange.length >= 2, `Maharashtra has verified ORANGE areas (${mhOrange.length} found)`);
+assert(mhOrange.every(a => a.category === 'ORANGE'), "ORANGE filter only contains ORANGE category records");
+
+const mhWhite = SEED_INDUSTRY_AREAS.filter(a => a.state === 'Maharashtra' && a.category === 'WHITE');
+assert(mhWhite.length >= 1, `Maharashtra has verified WHITE areas (${mhWhite.length} found)`);
+assert(mhWhite.every(a => a.category === 'WHITE'), "WHITE filter only contains WHITE category records");
+
+// 7. District filtering
+const puneAreas = SEED_INDUSTRY_AREAS.filter(a => a.state === 'Maharashtra' && a.district === 'Pune');
+assert(puneAreas.length >= 3, `Pune district contains verified industrial areas (${puneAreas.length} found)`);
+assert(puneAreas.every(a => a.district === 'Pune'), "District filter strictly returns Pune areas");
+
+// 8. Unrepresented state handling (Rule 2: No fake data)
+const unrepresentedStateAreas = SEED_INDUSTRY_AREAS.filter(a => a.state === "Other States");
+assert(unrepresentedStateAreas.length === 0, "Unonboarded state has 0 fake records; triggers official unverified fallback message");
 
 console.log("\n=======================================================");
 console.log(`🏁 TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);
