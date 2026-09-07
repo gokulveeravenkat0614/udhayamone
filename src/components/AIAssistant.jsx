@@ -39,6 +39,7 @@ export function AIAssistant({
   ]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [aiConfigured, setAiConfigured] = useState(null);
   const bottomRef = useRef(null);
   const sessionId = useMemo(() => getSessionId(), []);
 
@@ -75,6 +76,23 @@ export function AIAssistant({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+
+    assistantApi.config()
+      .then(cfg => {
+        if (!cancelled && cfg && typeof cfg.aiConfigured === 'boolean') {
+          setAiConfigured(cfg.aiConfigured);
+        }
+      })
+      .catch(() => {
+        // Chat service availability will be verified on send
+      });
+
+    return () => { cancelled = true; };
+  }, [open]);
 
   useEffect(() => {
     if (!open || !currentUser) return;
@@ -118,8 +136,25 @@ export function AIAssistant({
         ...prev,
         { role: 'assistant', content: data.reply }
       ]);
+      setAiConfigured(true);
     } catch (err) {
-      setError(err.message || 'Unable to reach UdyamOne AI.');
+      if (err.status === 503 || err.response?.data?.code === 'AI_NOT_CONFIGURED') {
+        setAiConfigured(false);
+        setError('AI assistant is temporarily unavailable. Please try again later.');
+      } else if (err.status === 401) {
+        setError('Please sign in to use UdyamOne AI.');
+      } else if (err.status === 429) {
+        setError('AI service is temporarily busy. Please try again in a moment.');
+      } else if (err.status === 0 || err.name === 'NetworkError') {
+        setError('Unable to connect to application service. Please check your network connection.');
+      } else {
+        const rawMsg = String(err.message || '');
+        if (rawMsg.toLowerCase().includes('.env') || rawMsg.toLowerCase().includes('openai')) {
+          setError('AI assistant is temporarily unavailable. Please try again later.');
+        } else {
+          setError(rawMsg || 'Unable to reach UdyamOne AI.');
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -144,8 +179,8 @@ export function AIAssistant({
               <div>
                 <div className="font-bold">UdyamOne AI</div>
                 <div className="text-xs text-blue-100 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-300" />
-                  AI business assistant
+                  <span className={`w-1.5 h-1.5 rounded-full ${aiConfigured === false ? 'bg-amber-300' : 'bg-emerald-300'}`} />
+                  {aiConfigured === false ? 'Service unavailable' : 'AI business assistant'}
                 </div>
               </div>
             </div>
@@ -251,7 +286,7 @@ export function AIAssistant({
       >
         {open ? <X size={26} /> : <MessageCircle size={28} />}
         {!open && (
-          <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-white" />
+          <span className={`absolute -top-1 -right-1 w-5 h-5 rounded-full border-2 border-white ${aiConfigured === false ? 'bg-amber-500' : 'bg-emerald-500'}`} />
         )}
       </button>
     </>

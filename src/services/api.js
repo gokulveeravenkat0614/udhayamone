@@ -388,5 +388,7 @@ export const assistantApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message, sessionId, history, websiteContext })
     }),
-  history: (sessionId) => request(`/assistant/history?sessionId=${encodeURIComponent(sessionId)}`)
+  history: (sessionId) => request(`/assistant/history?sessionId=${encodeURIComponent(sessionId)}`),
+  config: () => request('/assistant/config')
 };
+

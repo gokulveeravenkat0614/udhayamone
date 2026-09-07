@@ -1,9 +1,12 @@
 const express = require('express');
 const auth = require('../middleware/authMiddleware');
 const optionalAuth = require('../middleware/optionalAuthMiddleware');
-const { chat, history } = require('../controllers/assistantController');
+const { chat, history, config } = require('../controllers/assistantController');
 
 const router = express.Router();
+
+// Configuration status (indicates whether OpenAI is configured without leaking secret key)
+router.get('/config', config);
 
 // Public chatbot; signed-in users also get personalized MongoDB context.
 router.post('/chat', optionalAuth, chat);

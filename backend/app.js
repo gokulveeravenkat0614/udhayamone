@@ -39,8 +39,8 @@ app.use(cors({
 }));
 
 app.use(express.json());
-app.get('/api/health', (_,res)=>res.json({success:true,service:'udyamone-backend'}));
-app.get('/health', (_,res)=>res.json({success:true,service:'udyamone-backend'}));
+app.get('/api/health', (_, res) => res.json({ success: true, service: 'udyamone-backend', aiConfigured: Boolean(process.env.OPENAI_API_KEY) }));
+app.get('/health', (_, res) => res.json({ success: true, service: 'udyamone-backend', aiConfigured: Boolean(process.env.OPENAI_API_KEY) }));
 
 // Primary API routes (/api/*)
 app.use('/api/auth', authRoutes);

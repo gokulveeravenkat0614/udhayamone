@@ -1,18 +1,16 @@
-let OpenAI = null;
-try {
-  OpenAI = require('openai');
-} catch (e) {
-  // Optional dependency
-}
+const OpenAI = require('openai');
 const User = require('../models/User');
 const Verification = require('../models/Verification');
 const ChatMessage = require('../models/ChatMessage');
 
 const getOpenAIClient = () => {
-  if (!OpenAI || !process.env.OPENAI_API_KEY) return null;
+  if (!process.env.OPENAI_API_KEY) {
+    return null;
+  }
   try {
     return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  } catch {
+  } catch (err) {
+    console.error('Failed to initialize OpenAI client:', err.message);
     return null;
   }
 };
@@ -107,13 +105,31 @@ async function getPersonalContext(userId) {
   };
 }
 
+function config(req, res) {
+  return res.json({
+    success: true,
+    aiConfigured: Boolean(process.env.OPENAI_API_KEY)
+  });
+}
+
 async function chat(req, res) {
   try {
-    const client = getOpenAIClient();
-    if (!client) {
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('OPENAI_API_KEY is not configured');
       return res.status(503).json({
         success: false,
-        message: 'AI assistant is not configured. Add OPENAI_API_KEY to backend/.env.'
+        code: 'AI_NOT_CONFIGURED',
+        message: 'AI assistant is temporarily unavailable.'
+      });
+    }
+
+    const client = getOpenAIClient();
+    if (!client) {
+      console.error('Failed to initialize OpenAI client');
+      return res.status(503).json({
+        success: false,
+        code: 'AI_UNAVAILABLE',
+        message: 'AI assistant is temporarily unavailable.'
       });
     }
 
@@ -144,19 +160,32 @@ Personalized MongoDB context for the signed-in user (may be null for visitors):
 ${JSON.stringify(personalContext, null, 2)}
 `;
 
-    const input = [
-      { role: 'developer', content: `${SYSTEM_PROMPT}\n\n${contextMessage}` },
-      ...history,
-      { role: 'user', content: message }
-    ];
+    let reply = '';
+    const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
-    const response = await client.responses.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
-      input,
-      max_output_tokens: 500
-    });
-
-    const reply = (response.output_text || '').trim();
+    if (client.chat && client.chat.completions) {
+      const completion = await client.chat.completions.create({
+        model,
+        messages: [
+          { role: 'system', content: `${SYSTEM_PROMPT}\n\n${contextMessage}` },
+          ...history,
+          { role: 'user', content: message }
+        ],
+        max_tokens: 500
+      });
+      reply = (completion.choices?.[0]?.message?.content || '').trim();
+    } else if (client.responses && client.responses.create) {
+      const response = await client.responses.create({
+        model,
+        input: [
+          { role: 'developer', content: `${SYSTEM_PROMPT}\n\n${contextMessage}` },
+          ...history,
+          { role: 'user', content: message }
+        ],
+        max_output_tokens: 500
+      });
+      reply = (response.output_text || '').trim();
+    }
 
     if (!reply) {
       throw new Error('The AI returned an empty response');
@@ -177,16 +206,31 @@ ${JSON.stringify(personalContext, null, 2)}
       }
     ]);
 
-    res.json({
+    return res.json({
       success: true,
       reply,
       personalized: Boolean(req.user?.id)
     });
   } catch (error) {
-    console.error('UdyamOne AI error:', error);
-    res.status(500).json({
+    console.error('UdyamOne AI error:', error.message || error);
+
+    if (error.status === 429 || error.statusCode === 429 || error.code === 'rate_limit_exceeded') {
+      return res.status(429).json({
+        success: false,
+        message: 'AI service is temporarily busy. Please try again.'
+      });
+    }
+
+    if (error.status === 401 || error.statusCode === 401) {
+      return res.status(503).json({
+        success: false,
+        message: 'AI service is temporarily unavailable.'
+      });
+    }
+
+    return res.status(500).json({
       success: false,
-      message: 'The AI assistant is temporarily unavailable. Please try again.'
+      message: 'AI service is temporarily unavailable.'
     });
   }
 }
@@ -209,4 +253,5 @@ async function history(req, res) {
   }
 }
 
-module.exports = { chat, history };
+module.exports = { chat, history, config };
+
