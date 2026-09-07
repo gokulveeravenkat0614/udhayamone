@@ -427,5 +427,107 @@ async function history(req, res) {
   }
 }
 
-module.exports = { chat, history, config, health };
+async function diagnostic(req, res) {
+  const hasKey = Boolean(process.env.OPENAI_API_KEY);
+  const keyLength = process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.trim().length : 0;
+  const keyPrefix = process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.trim().slice(0, 7) : '';
+  const configuredModel = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+
+  if (!hasKey) {
+    return res.json({
+      success: false,
+      hasKey: false,
+      message: 'OPENAI_API_KEY is not set in environment'
+    });
+  }
+
+  const client = getOpenAIClient();
+  if (!client) {
+    return res.json({
+      success: false,
+      hasKey: true,
+      message: 'Failed to instantiate OpenAI client'
+    });
+  }
+
+  const results = {
+    hasKey: true,
+    keyLength,
+    keyPrefix,
+    configuredModel,
+    tests: {}
+  };
+
+  // Test 1: Tiny test completion with configuredModel
+  try {
+    const t0 = Date.now();
+    const completion = await client.chat.completions.create({
+      model: configuredModel,
+      messages: [{ role: 'user', content: 'Say hello' }],
+      max_tokens: 5
+    });
+    results.tests.configuredModel = {
+      success: true,
+      durationMs: Date.now() - t0,
+      reply: (completion.choices?.[0]?.message?.content || '').trim()
+    };
+  } catch (err) {
+    results.tests.configuredModel = {
+      success: false,
+      status: err.status || err.statusCode || null,
+      code: err.code || err.error?.code || null,
+      type: err.type || err.error?.type || null,
+      message: String(err.message || '').replace(/sk-[a-zA-Z0-9_-]+/g, '[REDACTED]'),
+      errorDetails: err.error || null
+    };
+  }
+
+  // Test 2: Try gpt-3.5-turbo if configuredModel failed
+  if (!results.tests.configuredModel.success) {
+    try {
+      const t0 = Date.now();
+      const completion = await client.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: 'Say hello' }],
+        max_tokens: 5
+      });
+      results.tests.gpt35 = {
+        success: true,
+        durationMs: Date.now() - t0,
+        reply: (completion.choices?.[0]?.message?.content || '').trim()
+      };
+    } catch (err) {
+      results.tests.gpt35 = {
+        success: false,
+        status: err.status || err.statusCode || null,
+        code: err.code || err.error?.code || null,
+        type: err.type || err.error?.type || null,
+        message: String(err.message || '').replace(/sk-[a-zA-Z0-9_-]+/g, '[REDACTED]')
+      };
+    }
+  }
+
+  // Test 3: List models if completions failed
+  if (!results.tests.configuredModel.success && (!results.tests.gpt35 || !results.tests.gpt35.success)) {
+    try {
+      const modelList = await client.models.list();
+      results.tests.modelsList = {
+        success: true,
+        count: modelList?.data?.length || 0,
+        availableSample: (modelList?.data || []).slice(0, 5).map(m => m.id)
+      };
+    } catch (err) {
+      results.tests.modelsList = {
+        success: false,
+        status: err.status || null,
+        code: err.code || null,
+        message: String(err.message || '').replace(/sk-[a-zA-Z0-9_-]+/g, '[REDACTED]')
+      };
+    }
+  }
+
+  return res.json(results);
+}
+
+module.exports = { chat, history, config, health, diagnostic };
 
