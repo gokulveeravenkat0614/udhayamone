@@ -112,6 +112,7 @@ export function AIAssistant({
   const [lastFailedMessage, setLastFailedMessage] = useState(null);
   const [aiConfigured, setAiConfigured] = useState(null);
   const bottomRef = useRef(null);
+  const isSendingRef = useRef(false);
   const [sessionId, setSessionId] = useState(() => getSessionId());
 
   function handleNewConversation() {
@@ -123,6 +124,7 @@ export function AIAssistant({
     setMessages([INITIAL_MESSAGE]);
     setError('');
     setLastFailedMessage(null);
+    isSendingRef.current = false;
   }
 
   const websiteContext = useMemo(() => {
@@ -190,10 +192,15 @@ export function AIAssistant({
     assistantApi.history(sessionId)
       .then(data => {
         if (cancelled || !data?.messages?.length) return;
-        setMessages(data.messages.map(item => ({
-          role: item.role,
-          content: item.content
-        })));
+        setMessages(prev => {
+          if (prev.length <= 1) {
+            return data.messages.map(item => ({
+              role: item.role,
+              content: item.content
+            }));
+          }
+          return prev;
+        });
       })
       .catch(() => {
         // Chat history is optional; the assistant still works if it cannot be loaded.
@@ -202,16 +209,27 @@ export function AIAssistant({
     return () => { cancelled = true; };
   }, [open, currentUser, sessionId]);
 
-  async function sendMessage(messageOverride = null) {
+  async function sendMessage(messageOverride = null, isRetry = false) {
     const message = String(messageOverride ?? input).trim();
-    if (!message || loading) return;
+    if (!message || loading || isSendingRef.current) return;
+    isSendingRef.current = true;
 
     // Safe debugging logs per MVP specification (never logs secret keys)
     console.log("AI API URL:", buildApiUrl('/ai/chat'));
     console.log("AI request started");
 
-    const nextMessages = [...messages, { role: 'user', content: message }];
-    setMessages(nextMessages);
+    let nextMessages = messages;
+    setMessages(prev => {
+      // Prevent duplicate bubbles: do not re-add if the last message is already this exact user message
+      const last = prev[prev.length - 1];
+      if (last && last.role === 'user' && last.content === message) {
+        nextMessages = prev;
+        return prev;
+      }
+      nextMessages = [...prev, { role: 'user', content: message }];
+      return nextMessages;
+    });
+
     setInput('');
     setError('');
     setLastFailedMessage(null);
@@ -238,21 +256,40 @@ export function AIAssistant({
       console.error('AI chat error:', err?.message || err);
       setLastFailedMessage(message);
       const status = err.status || err.statusCode || err.response?.status;
-      const code = err.response?.data?.code;
+      const code = err.response?.data?.code || err.data?.code;
 
-      if (status === 503 || code === 'AI_PROVIDER_CONFIGURATION_MISSING' || code === 'AI_NOT_CONFIGURED') {
+      if (status === 401) {
+        setError('Please sign in again.');
+      } else if (status === 404) {
+        setError('AI service endpoint is unavailable.');
+      } else if (status === 429) {
+        if (code === 'AI_PROVIDER_QUOTA_EXCEEDED') {
+          setError('AI service quota exceeded. Please check OpenAI billing or API key.');
+        } else {
+          setError('AI service is busy. Please try again shortly.');
+        }
+      } else if (status === 503 || code === 'AI_PROVIDER_CONFIGURATION_MISSING' || code === 'AI_NOT_CONFIGURED') {
         setAiConfigured(false);
+        setError('AI service is temporarily unavailable.');
+      } else if (status === 500) {
+        setError('AI service is temporarily unavailable.');
+      } else if (err.name === 'NetworkError' || status === 0 || (typeof navigator !== 'undefined' && !navigator.onLine) || String(err.message || '').toLowerCase().includes('network') || String(err.message || '').toLowerCase().includes('failed to fetch')) {
+        setError('Unable to connect to application service.');
+      } else {
+        setError('AI service is temporarily unavailable.');
       }
-      setError("Sorry, I couldn't process that right now. Please try again.");
     } finally {
       setLoading(false);
+      isSendingRef.current = false;
     }
   }
 
   function handleKeyDown(event) {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      sendMessage();
+      if (!loading && !isSendingRef.current) {
+        sendMessage();
+      }
     }
   }
 
@@ -332,9 +369,9 @@ export function AIAssistant({
                 {lastFailedMessage && (
                   <button
                     type="button"
-                    onClick={() => sendMessage(lastFailedMessage)}
+                    onClick={() => sendMessage(lastFailedMessage, true)}
                     disabled={loading}
-                    className="inline-flex items-center gap-1.5 self-start sm:self-auto px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-xs transition shadow-sm"
+                    className="inline-flex items-center gap-1.5 self-start sm:self-auto px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-xs transition shadow-sm disabled:opacity-50"
                   >
                     <RotateCcw size={12} />
                     Retry
@@ -352,8 +389,9 @@ export function AIAssistant({
                 <button
                   key={question}
                   type="button"
+                  disabled={loading}
                   onClick={() => sendMessage(question)}
-                  className="text-xs text-left px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-brand-300 hover:bg-brand-50 text-slate-700 transition"
+                  className="text-xs text-left px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-brand-300 hover:bg-brand-50 text-slate-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {question}
                 </button>

@@ -12,8 +12,9 @@ const getOpenAIClient = () => {
   }
   try {
     return new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-      timeout: 20000
+      apiKey: process.env.OPENAI_API_KEY.trim(),
+      timeout: 25000,
+      maxRetries: 2
     });
   } catch (err) {
     console.error('[AI Provider] Failed to initialize OpenAI client:', err.message);
@@ -278,33 +279,40 @@ ${JSON.stringify(personalContext, null, 2)}
 `;
 
     let reply = '';
-    const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+    const configuredModel = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+    const modelsToTry = [configuredModel];
+    if (configuredModel !== 'gpt-3.5-turbo') modelsToTry.push('gpt-3.5-turbo');
+    if (configuredModel !== 'gpt-4o') modelsToTry.push('gpt-4o');
 
     // Race OpenAI call against a 25-second server timeout to prevent hanging connections
     const aiCall = async () => {
-      if (client.chat && client.chat.completions) {
-        const completion = await client.chat.completions.create({
-          model,
-          messages: [
-            { role: 'system', content: `${SYSTEM_PROMPT}\n\n${contextMessage}` },
-            ...history,
-            { role: 'user', content: message }
-          ],
-          max_tokens: 1000
-        });
-        return (completion.choices?.[0]?.message?.content || '').trim();
-      } else if (client.responses && client.responses.create) {
-        const response = await client.responses.create({
-          model,
-          input: [
-            { role: 'developer', content: `${SYSTEM_PROMPT}\n\n${contextMessage}` },
-            ...history,
-            { role: 'user', content: message }
-          ],
-          max_output_tokens: 1000
-        });
-        return (response.output_text || '').trim();
+      let lastErr = null;
+      for (const m of modelsToTry) {
+        try {
+          if (client.chat && client.chat.completions) {
+            const completion = await client.chat.completions.create({
+              model: m,
+              messages: [
+                { role: 'system', content: `${SYSTEM_PROMPT}\n\n${contextMessage}` },
+                ...history,
+                { role: 'user', content: message }
+              ],
+              max_tokens: 1000
+            });
+            const text = (completion.choices?.[0]?.message?.content || '').trim();
+            if (text) return text;
+          }
+        } catch (err) {
+          lastErr = err;
+          const msg = (err.message || '').toLowerCase();
+          // If error is account quota exceeded or authentication failure, fallback models won't help
+          if (err.status === 401 || err.code === 'insufficient_quota' || msg.includes('quota') || msg.includes('api key')) {
+            throw err;
+          }
+          console.warn(`[AI Provider] Model ${m} attempt failed, trying fallback:`, err.message);
+        }
       }
+      if (lastErr) throw lastErr;
       return '';
     };
 
@@ -349,22 +357,33 @@ ${JSON.stringify(personalContext, null, 2)}
   } catch (error) {
     const errorStatus = error.status || error.statusCode || 500;
     const errorMessage = error.message || String(error);
+    const errorCode = error.code || error.error?.code || null;
+    const isQuota = errorCode === 'insufficient_quota' || errorMessage.toLowerCase().includes('quota');
 
     if (errorStatus === 401 || errorMessage.includes('401') || errorMessage.toLowerCase().includes('api key')) {
       console.error('[AI Provider] AI_PROVIDER_AUTH_FAILED: Authentication with OpenAI failed. Check OPENAI_API_KEY validity.', errorMessage);
       return res.status(503).json({
         success: false,
         code: 'AI_PROVIDER_AUTH_FAILED',
-        message: 'AI assistant is temporarily unavailable. Please try again later.'
+        message: 'AI service is temporarily unavailable.'
       });
     }
 
-    if (errorStatus === 429 || errorMessage.includes('429') || error.code === 'rate_limit_exceeded') {
+    if (isQuota) {
+      console.error('[AI Provider] AI_PROVIDER_QUOTA_EXCEEDED: OpenAI API quota exceeded.', errorMessage);
+      return res.status(429).json({
+        success: false,
+        code: 'AI_PROVIDER_QUOTA_EXCEEDED',
+        message: 'AI service quota exceeded. Please check OpenAI account billing or API key.'
+      });
+    }
+
+    if (errorStatus === 429 || errorMessage.includes('429') || errorCode === 'rate_limit_exceeded') {
       console.error('[AI Provider] AI_PROVIDER_REQUEST_FAILED: Rate limit reached with OpenAI provider.', errorMessage);
       return res.status(429).json({
         success: false,
         code: 'AI_PROVIDER_RATE_LIMITED',
-        message: 'AI service is temporarily busy. Please try again in a moment.'
+        message: 'AI service is busy. Please try again shortly.'
       });
     }
 
@@ -381,7 +400,7 @@ ${JSON.stringify(personalContext, null, 2)}
     return res.status(500).json({
       success: false,
       code: 'AI_PROVIDER_REQUEST_FAILED',
-      message: 'AI service is temporarily unavailable. Please try again later.'
+      message: 'AI service is temporarily unavailable.'
     });
   }
 }
