@@ -54,13 +54,13 @@ export const Navbar = ({
     { id: 'wizard', path: '/wizard', label: 'Requirements' },
     { id: 'compliance', path: '/compliance', label: 'Compliance' },
     { id: 'schemes', path: '/schemes', label: 'Schemes' },
-    { id: 'verification', path: '/verify', label: 'Verify' },
     { id: 'help', path: '/help', label: 'Help' }
   ];
 
   const authLinks = [
     { id: 'dashboard', path: '/dashboard', label: 'Dashboard' },
     { id: 'my-applications', path: '/my-applications', label: 'My Applications' },
+    { id: 'verification', path: '/verify', label: 'Verify Identity' },
     { id: 'wizard', path: '/wizard', label: 'Requirements' },
     { id: 'compliance', path: '/compliance', label: 'Compliance' },
     { id: 'schemes', path: '/schemes', label: 'Schemes' }
@@ -317,6 +317,18 @@ export const Navbar = ({
                       >
                         <Layers className="w-4 h-4 text-brand-600" />
                         <span>My Applications</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setUserDropdownOpen(false);
+                          if (onNavigate) onNavigate('/verify');
+                          else setCurrentTab('verification');
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2.5 cursor-pointer"
+                      >
+                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                        <span>Identity Verification</span>
                       </button>
 
                       <button

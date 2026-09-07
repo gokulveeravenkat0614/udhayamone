@@ -130,16 +130,21 @@ async function request(path, options = {}) {
     let message = data?.message;
     if (!message) {
       if (response.status === 400) message = 'Bad request. Please check submitted data.';
-      else if (response.status === 401) message = 'Authentication required. Please log in.';
-      else if (response.status === 403) message = 'Access denied. You do not have permission.';
+      else if (response.status === 401) message = 'Authentication required. Please log in again.';
+      else if (response.status === 403) message = 'You do not have permission to perform this verification.';
       else if (response.status === 404) message = 'Resource not found.';
       else if (response.status === 409) message = 'An account with this email or mobile already exists.';
-      else if (response.status >= 500) message = 'Internal server error. Please try again later.';
+      else if (response.status >= 500) message = 'Verification service is temporarily unavailable. Please try again.';
       else message = `Request failed with status ${response.status}`;
+    }
+
+    if (response.status === 401 && path !== '/auth/login' && path !== '/auth/register') {
+      clearAuthSession();
     }
 
     const error = new Error(message);
     error.status = response.status;
+    error.statusCode = response.status;
     error.response = { status: response.status, data };
     // Only genuine 404 from backend specifically stating Application not found
     error.isApplicationNotFound = response.status === 404 && data?.message === 'Application not found';
@@ -225,15 +230,24 @@ export const authApi = {
   me: () => request('/auth/me')
 };
 
-export async function submitVerification({document1,document2,selfie}) {
+export async function submitVerification({ document1, document2, selfie }) {
+  const token = getStoredToken();
+  if (!token) {
+    const error = new Error('Authentication required. Please log in again.');
+    error.status = 401;
+    error.statusCode = 401;
+    throw error;
+  }
+
   const form = new FormData();
-  form.append('document1',document1,'document-1.jpg');
-  if (document2) form.append('document2',document2,'document-2.jpg');
-  form.append('selfie',selfie,'selfie.jpg');
-  return request('/verification/submit',{method:'POST',body:form});
+  if (document1) form.append('document1', document1, 'document-1.jpg');
+  if (document2) form.append('document2', document2, 'document-2.jpg');
+  if (selfie) form.append('selfie', selfie, 'selfie.jpg');
+  return request('/verification/submit', { method: 'POST', body: form });
 }
 
 export const verificationApi = {
+  submit: submitVerification,
   status: () => request('/verification/status'),
   history: () => request('/verification/history')
 };

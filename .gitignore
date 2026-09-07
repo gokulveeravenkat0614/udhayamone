@@ -30,3 +30,8 @@ dist-ssr
 backend/.env
 backend/.env.*
 !backend/.env.example
+
+# Uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
+

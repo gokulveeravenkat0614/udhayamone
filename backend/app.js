@@ -35,8 +35,14 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
 }));
+
+const fs = require('fs');
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  try { fs.mkdirSync(uploadsDir, { recursive: true }); } catch {}
+}
 
 app.use(express.json());
 app.get('/api/health', (_, res) => res.json({ success: true, service: 'udyamone-backend', aiConfigured: Boolean(process.env.OPENAI_API_KEY) }));
@@ -60,10 +66,9 @@ app.use('/documents', documentRoutes);
 app.use('/applications', applicationRoutes);
 app.use('/assistant', assistantRoutes);
 
-app.use('/uploads', express.static(path.join(__dirname,'uploads')));
+app.use('/uploads', express.static(uploadsDir));
 
 // Serve static frontend assets and SPA fallback when dist exists
-const fs = require('fs');
 const distPath = path.resolve(__dirname, '../dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));

@@ -184,11 +184,19 @@ export default function App() {
             setApplications([]);
           }
         })
-        .catch(() => {
-          // Keep cached user if network temporarily unavailable
-          const cached = getStoredUser();
-          if (cached) setCurrentUser(cached);
+        .catch((err) => {
+          if (err.status === 401) {
+            clearAuthSession();
+            setCurrentUser(null);
+            setApplications([]);
+          } else {
+            // Keep cached user if network temporarily unavailable
+            const cached = getStoredUser();
+            if (cached) setCurrentUser(cached);
+          }
         });
+    } else {
+      setCurrentUser(null);
     }
   }, [fetchUserApplications]);
 
@@ -383,13 +391,15 @@ export default function App() {
 
   // Route Analysis & Protection
   const currentRoute = parseRoute(currentPath);
-  const protectedRoutes = ['dashboard', 'my-applications', 'application', 'profile'];
+  const protectedRoutes = ['dashboard', 'my-applications', 'application', 'profile', 'verify'];
   const isProtectedRoute = protectedRoutes.includes(currentRoute.name);
 
   // Unauthenticated access to protected route redirects to /login
   useEffect(() => {
     if (isProtectedRoute && !currentUser) {
-      showToast('Please log in to access your personal workspace.');
+      showToast(currentRoute.name === 'verify'
+        ? 'Please log in to verify your enterprise identity.'
+        : 'Please log in to access your personal workspace.');
       navigate('/login', { replace: true });
     }
   }, [currentRoute.name, currentUser, isProtectedRoute, navigate, showToast]);
@@ -524,8 +534,12 @@ export default function App() {
         {/* 10. IDENTITY VERIFICATION PAGE */}
         {currentRoute.name === 'verify' && (
           <VerificationPage 
-            onComplete={() => {
-              setCurrentUser(prev => prev ? ({ ...prev, verificationStatus: 'verified' }) : prev);
+            currentUser={currentUser}
+            onNavigate={navigate}
+            onComplete={(verification) => {
+              const newStatus = verification?.status === 'verified' ? 'verified' : 'pending';
+              setCurrentUser(prev => prev ? ({ ...prev, verificationStatus: newStatus }) : prev);
+              showToast('Identity verification completed successfully!');
               navigate('/dashboard');
             }} 
             onBack={() => navigate('/dashboard')} 

@@ -524,6 +524,96 @@ const server = app.listen(5098, async () => {
     const notUploadedDocsCount = directRootDocs.data.documents.filter(d => d.status === 'NOT UPLOADED').length;
     assert(totalDocsCount > 0 && approvedDocsCount === 1 && rejectedDocsCount === 0 && (approvedDocsCount + notUploadedDocsCount === totalDocsCount), "Document counts dynamically calculated from actual database records (zero fake uploaded documents)");
 
+    // TEST SUITE 5: Identity Verification & Authentication Flow
+    console.log("\n▶ TEST SUITE 5: Identity Verification & Authentication Flow");
+
+    // 5.1 GET /api/verification/status requires authentication
+    const unauthStatus = await makeJsonRequest({
+      path: '/api/verification/status'
+    });
+    assert(unauthStatus.statusCode === 401, "GET /api/verification/status rejects unauthenticated request (HTTP 401)");
+
+    // 5.2 POST /api/verification/submit requires authentication
+    const unauthSubmit = await makeJsonRequest({
+      path: '/api/verification/submit',
+      method: 'POST'
+    });
+    assert(unauthSubmit.statusCode === 401, "POST /api/verification/submit rejects unauthenticated request (HTTP 401)");
+
+    // 5.3 POST /api/verification/submit rejects invalid/expired token
+    const invalidTokenSubmit = await makeJsonRequest({
+      path: '/api/verification/submit',
+      method: 'POST',
+      headers: { Authorization: 'Bearer invalid.or.expired.jwt.token' }
+    });
+    assert(invalidTokenSubmit.statusCode === 401, "POST /api/verification/submit rejects invalid/expired token with HTTP 401");
+
+    // 5.4 POST /api/verification/submit validates required files
+    const noFilesSubmit = await makeJsonRequest({
+      path: '/api/verification/submit',
+      method: 'POST',
+      headers: { Authorization: `Bearer ${demoToken}` }
+    });
+    assert(noFilesSubmit.statusCode === 400, "POST /api/verification/submit returns HTTP 400 when document1 or selfie is missing");
+
+    // 5.5 POST /api/verification/submit with authenticated user and multipart files succeeds
+    await new Promise((resolve, reject) => {
+      const boundary = '----WebKitFormBoundary' + Math.random().toString(36).slice(2);
+      const dummyImage = Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x01, 0x00, 0x48, 0x00, 0x48, 0x00, 0x00, 0xFF, 0xD9]);
+      
+      let bodyParts = [];
+      bodyParts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="document1"; filename="pan_card.jpg"\r\nContent-Type: image/jpeg\r\n\r\n`));
+      bodyParts.push(dummyImage);
+      bodyParts.push(Buffer.from(`\r\n--${boundary}\r\nContent-Disposition: form-data; name="selfie"; filename="live_selfie.jpg"\r\nContent-Type: image/jpeg\r\n\r\n`));
+      bodyParts.push(dummyImage);
+      bodyParts.push(Buffer.from(`\r\n--${boundary}--\r\n`));
+      
+      const payload = Buffer.concat(bodyParts);
+      const req = http.request({
+        hostname: '127.0.0.1',
+        port: 5098,
+        path: '/api/verification/submit',
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${demoToken}`,
+          'Content-Type': `multipart/form-data; boundary=${boundary}`,
+          'Content-Length': payload.length
+        }
+      }, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          assert(res.statusCode === 200, "POST /api/verification/submit succeeds with HTTP 200 for authenticated user");
+          const json = JSON.parse(data);
+          assert(json.success === true && json.verification, "Verification response contains created verification dossier");
+          assert(json.verification.status === 'verified', "Verification status completed with status 'verified'");
+          assert(json.verification.documentMatch === true, "Verification document match confirmed");
+          assert(json.verification.faceMatch === true, "Verification facial match confirmed");
+          resolve();
+        });
+      });
+      req.on('error', reject);
+      req.write(payload);
+      req.end();
+    });
+
+    // 5.6 GET /api/verification/status returns verified status for authenticated user
+    const authedStatus = await makeJsonRequest({
+      path: '/api/verification/status',
+      headers: { Authorization: `Bearer ${demoToken}` }
+    });
+    assert(authedStatus.statusCode === 200 && authedStatus.data?.success === true, "GET /api/verification/status returns HTTP 200");
+    assert(authedStatus.data?.verificationStatus === 'verified', "User verificationStatus updated to 'verified'");
+    assert(authedStatus.data?.verification != null, "Verification record returned for authenticated user");
+
+    // 5.7 GET /api/verification/history returns user's verification records
+    const authedHistory = await makeJsonRequest({
+      path: '/api/verification/history',
+      headers: { Authorization: `Bearer ${demoToken}` }
+    });
+    assert(authedHistory.statusCode === 200 && Array.isArray(authedHistory.data?.records), "GET /api/verification/history returns records list");
+    assert(authedHistory.data?.records.length >= 1, "Verification history records contain newly submitted verification");
+
     server.close(() => {
       console.log("\n=======================================================");
       console.log(`🏁 INTEGRATION RESULTS: ${passed} PASSED, ${failed} FAILED`);

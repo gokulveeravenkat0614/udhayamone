@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const verificationSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  userId: { type: mongoose.Schema.Types.Mixed, ref: 'User', required: true },
   document1Path: String,
   document2Path: String,
   livePhotoPath: String,
