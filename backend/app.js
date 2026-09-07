@@ -8,6 +8,7 @@ const approvalRoutes = require('./routes/approvalRoutes');
 const documentRoutes = require('./routes/documentRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
 const assistantRoutes = require('./routes/assistantRoutes');
+const industryAreaRoutes = require('./routes/industryAreaRoutes');
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use('/api/approvals', approvalRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/assistant', assistantRoutes);
+app.use('/api/industry-areas', industryAreaRoutes);
 
 // Direct root fallbacks (supports environments where API base URL omits /api)
 app.use('/auth', authRoutes);
@@ -65,6 +67,7 @@ app.use('/approvals', approvalRoutes);
 app.use('/documents', documentRoutes);
 app.use('/applications', applicationRoutes);
 app.use('/assistant', assistantRoutes);
+app.use('/industry-areas', industryAreaRoutes);
 
 app.use('/uploads', express.static(uploadsDir));
 

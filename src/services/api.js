@@ -406,3 +406,36 @@ export const assistantApi = {
   config: () => request('/assistant/config')
 };
 
+export const industryAreaApi = {
+  getStates: () => request('/industry-areas/states'),
+  getAreas: ({ state, district, category, industry }) => {
+    const params = new URLSearchParams();
+    if (state) params.set('state', state);
+    if (district) params.set('district', district);
+    if (category) params.set('category', category);
+    if (industry) params.set('industry', industry);
+    return request(`/industry-areas?${params.toString()}`);
+  },
+  search: ({ industry, q, state }) => {
+    const params = new URLSearchParams();
+    if (industry) params.set('industry', industry);
+    if (q) params.set('q', q);
+    if (state) params.set('state', state);
+    return request(`/industry-areas/search?${params.toString()}`);
+  },
+  create: (data) => request('/industry-areas', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }),
+  update: (id, data) => request(`/industry-areas/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }),
+  delete: (id) => request(`/industry-areas/${encodeURIComponent(id)}`, {
+    method: 'DELETE'
+  })
+};
+
+

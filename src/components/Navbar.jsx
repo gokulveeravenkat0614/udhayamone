@@ -51,6 +51,7 @@ export const Navbar = ({
   // Navigation Links based on login state
   const unauthLinks = [
     { id: 'home', path: '/', label: 'Home' },
+    { id: 'industry-areas', path: '/industry-areas', label: 'Industry Areas' },
     { id: 'wizard', path: '/wizard', label: 'Requirements' },
     { id: 'compliance', path: '/compliance', label: 'Compliance' },
     { id: 'schemes', path: '/schemes', label: 'Schemes' },
@@ -61,6 +62,7 @@ export const Navbar = ({
     { id: 'dashboard', path: '/dashboard', label: 'Dashboard' },
     { id: 'my-applications', path: '/my-applications', label: 'My Applications' },
     { id: 'verification', path: '/verify', label: 'Verify Identity' },
+    { id: 'industry-areas', path: '/industry-areas', label: 'Industry Areas' },
     { id: 'wizard', path: '/wizard', label: 'Requirements' },
     { id: 'compliance', path: '/compliance', label: 'Compliance' },
     { id: 'schemes', path: '/schemes', label: 'Schemes' }

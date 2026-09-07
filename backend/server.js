@@ -4,6 +4,7 @@ const connectDB = require('./config/db');
 const { ensureDemoUsers } = require('./controllers/authController');
 const { ensureDemoDocumentRecords } = require('./controllers/documentController');
 const { ensureDemoApplications } = require('./controllers/applicationController');
+const { ensureIndustryAreaRecords } = require('./controllers/industryAreaController');
 
 const port = process.env.PORT || 5000;
 
@@ -13,6 +14,7 @@ const port = process.env.PORT || 5000;
     await ensureDemoUsers();
     await ensureDemoDocumentRecords();
     await ensureDemoApplications();
+    await ensureIndustryAreaRecords();
     console.log('MongoDB connected and demo users verified.');
     console.log(`OPENAI_API_KEY configured: ${Boolean(process.env.OPENAI_API_KEY)}`);
   } catch (err) {

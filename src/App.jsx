@@ -12,6 +12,7 @@ import { HelpSection } from './components/HelpSection';
 import { Footer } from './components/Footer';
 import { VerificationPage } from './pages/VerificationPage';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { IndustryAreaEligibilityPage } from './pages/IndustryAreaEligibilityPage';
 
 // Client Account Workspace Pages
 import { LoginPage } from './pages/LoginPage';
@@ -58,6 +59,7 @@ function parseRoute(pathname) {
   if (clean === '/officer') return { name: 'officer', path: '/officer' };
   if (clean === '/compliance') return { name: 'compliance', path: '/compliance' };
   if (clean === '/schemes') return { name: 'schemes', path: '/schemes' };
+  if (clean === '/industry-areas') return { name: 'industry-areas', path: '/industry-areas' };
   if (clean === '/wizard' || clean === '/application/new') return { name: 'wizard', path: '/wizard' };
   if (clean === '/help') return { name: 'help', path: '/help' };
 
@@ -541,7 +543,19 @@ export default function App() {
           </div>
         )}
 
-        {/* 10. IDENTITY VERIFICATION PAGE */}
+        {/* 10. INDUSTRY AREA ELIGIBILITY */}
+        {currentRoute.name === 'industry-areas' && (
+          <div className="py-4">
+            <IndustryAreaEligibilityPage
+              onNavigate={navigate}
+              selectedState={selectedState}
+              selectedDistrict={selectedDistrict}
+              selectedIndustry={selectedIndustry}
+            />
+          </div>
+        )}
+
+        {/* 11. IDENTITY VERIFICATION PAGE */}
         {currentRoute.name === 'verify' && (
           <VerificationPage 
             currentUser={currentUser}
