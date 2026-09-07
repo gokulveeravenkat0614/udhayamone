@@ -7,9 +7,37 @@ const adminRoutes = require('./routes/adminRoutes');
 const approvalRoutes = require('./routes/approvalRoutes');
 const documentRoutes = require('./routes/documentRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
+const assistantRoutes = require('./routes/assistantRoutes');
 
 const app = express();
-app.use(cors({ origin:true, credentials:true }));
+
+// Robust CORS allowing production Render frontend origins and local development
+const allowedOrigins = [
+  'https://udhayamone-1.onrender.com',
+  'https://udhyayamone-1.onrender.com',
+  'https://udhayamone.onrender.com',
+  'https://udhyayamone.onrender.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:5000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5000'
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin) || origin.endsWith('.onrender.com')) {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 app.get('/api/health', (_,res)=>res.json({success:true,service:'udyamone-backend'}));
 app.get('/health', (_,res)=>res.json({success:true,service:'udyamone-backend'}));
@@ -21,13 +49,16 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/approvals', approvalRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/applications', applicationRoutes);
+app.use('/api/assistant', assistantRoutes);
 
 // Direct root fallbacks (supports environments where API base URL omits /api)
 app.use('/auth', authRoutes);
 app.use('/verification', verificationRoutes);
+app.use('/admin', adminRoutes);
 app.use('/approvals', approvalRoutes);
 app.use('/documents', documentRoutes);
 app.use('/applications', applicationRoutes);
+app.use('/assistant', assistantRoutes);
 
 app.use('/uploads', express.static(path.join(__dirname,'uploads')));
 
@@ -46,6 +77,7 @@ if (fs.existsSync(distPath)) {
       !req.path.startsWith('/approvals') &&
       !req.path.startsWith('/documents') &&
       !req.path.startsWith('/applications') &&
+      !req.path.startsWith('/assistant') &&
       !req.path.startsWith('/uploads')
     ) {
       return res.sendFile(path.join(distPath, 'index.html'));

@@ -1,11 +1,21 @@
-const OpenAI = require('openai');
+let OpenAI = null;
+try {
+  OpenAI = require('openai');
+} catch (e) {
+  // Optional dependency
+}
 const User = require('../models/User');
 const Verification = require('../models/Verification');
 const ChatMessage = require('../models/ChatMessage');
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+const getOpenAIClient = () => {
+  if (!OpenAI || !process.env.OPENAI_API_KEY) return null;
+  try {
+    return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  } catch {
+    return null;
+  }
+};
 
 const SYSTEM_PROMPT = `
 You are UdyamOne AI, the website's business and identity-verification assistant for Indian entrepreneurs.
@@ -99,7 +109,8 @@ async function getPersonalContext(userId) {
 
 async function chat(req, res) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
+    const client = getOpenAIClient();
+    if (!client) {
       return res.status(503).json({
         success: false,
         message: 'AI assistant is not configured. Add OPENAI_API_KEY to backend/.env.'
@@ -139,7 +150,7 @@ ${JSON.stringify(personalContext, null, 2)}
       { role: 'user', content: message }
     ];
 
-    const response = await openai.responses.create({
+    const response = await client.responses.create({
       model: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
       input,
       max_output_tokens: 500

@@ -21,6 +21,7 @@ import { MyApplicationsPage } from './pages/MyApplicationsPage';
 import { ApplicationWorkspacePage } from './pages/ApplicationWorkspacePage';
 import { ProfilePage } from './pages/ProfilePage';
 
+import { AIAssistant } from './components/AIAssistant';
 import { getRequirements } from './data/requirementsData';
 import { getStoredApplications, saveStoredApplications } from './data/initialApplications';
 import { 
@@ -612,6 +613,14 @@ export default function App() {
           else if (role === 'officer') navigate('/officer');
         }}
         onAuthenticated={handleAuthenticated}
+      />
+
+      {/* Global AI Assistant Floating Widget */}
+      <AIAssistant
+        currentUser={currentUser}
+        selectedState={selectedState}
+        selectedDistrict={selectedDistrict}
+        selectedIndustry={selectedIndustry}
       />
 
       {/* Global Footer */}

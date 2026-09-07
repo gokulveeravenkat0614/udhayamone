@@ -1,36 +1,67 @@
+const DEFAULT_PROD_API_URL = 'https://udhayamone.onrender.com';
+const DEFAULT_LOCAL_API_URL = 'http://localhost:5000/api';
+
 export const getApiBaseUrl = () => {
   let base = '';
+
+  // 1. Runtime override via window or localStorage (useful for debugging/custom host)
   if (typeof window !== 'undefined') {
-    if (window.UDYAMONE_API_URL) return window.UDYAMONE_API_URL.replace(/\/+$/, '');
-    try {
-      const stored = localStorage.getItem('udyamone_api_url');
-      if (stored) return stored.replace(/\/+$/, '');
-    } catch {}
+    if (window.UDYAMONE_API_URL) {
+      base = window.UDYAMONE_API_URL;
+    } else {
+      try {
+        const stored = localStorage.getItem('udyamone_api_url');
+        if (stored) base = stored;
+      } catch {}
+    }
   }
-  if (typeof import.meta !== 'undefined') {
-    if (import.meta.env?.VITE_API_BASE_URL) base = import.meta.env.VITE_API_BASE_URL;
-    else if (import.meta.env?.VITE_API_URL) base = import.meta.env.VITE_API_URL;
+
+  // 2. Vite / process environment variable
+  if (!base && typeof import.meta !== 'undefined' && import.meta.env) {
+    base = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '';
   }
-  if (!base && typeof process !== 'undefined') {
-    if (process.env?.VITE_API_BASE_URL) base = process.env.VITE_API_BASE_URL;
-    else if (process.env?.VITE_API_URL) base = process.env.VITE_API_URL;
+  if (!base && typeof process !== 'undefined' && process.env) {
+    base = process.env.VITE_API_URL || process.env.VITE_API_BASE_URL || '';
   }
-  if (!base && typeof window !== 'undefined' && window.location && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    // In production on remote host without explicit env var, use relative /api
-    base = '/api';
+
+  // 3. Normalize typo variations and eliminate any reference to the frontend static host
+  if (base) {
+    // If someone accidentally configured the frontend host as the API URL, redirect to backend
+    base = base.replace(/ud[hy]+ayamone-1\.onrender\.com/gi, 'udhayamone.onrender.com');
+    // If phonetic typo with double 'ya' is present
+    base = base.replace(/udhyayamone\.onrender\.com/gi, 'udhayamone.onrender.com');
   }
+
+  // 4. Default resolution based on environment
   if (!base) {
-    base = 'http://localhost:5000/api';
+    const isLocalhost = typeof window !== 'undefined' && window.location && (
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname === '[::1]'
+    );
+    base = isLocalhost ? DEFAULT_LOCAL_API_URL : DEFAULT_PROD_API_URL;
   }
+
   return base.replace(/\/+$/, '');
 };
 
 export function buildApiUrl(path) {
   const base = getApiBaseUrl();
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  if (base.endsWith('/api') && cleanPath.startsWith('/api/')) {
-    return `${base}${cleanPath.slice(4)}`;
+
+  // If base already contains /api (e.g. http://localhost:5000/api or https://.../api)
+  if (base.endsWith('/api')) {
+    if (cleanPath.startsWith('/api/')) {
+      return `${base}${cleanPath.slice(4)}`;
+    }
+    return `${base}${cleanPath}`;
   }
+
+  // If base does NOT end with /api, ensure path includes /api
+  if (!cleanPath.startsWith('/api/')) {
+    return `${base}/api${cleanPath}`;
+  }
+
   return `${base}${cleanPath}`;
 }
 
@@ -40,11 +71,16 @@ async function request(path, options = {}) {
   if (token) headers.Authorization = `Bearer ${token}`;
   
   const url = buildApiUrl(path);
+  const method = (options.method || 'GET').toUpperCase();
+
   let response;
   try {
-    response = await fetch(url, { ...options, headers });
+    response = await fetch(url, { ...options, method, headers });
   } catch (netErr) {
-    const error = new Error('Unable to connect to application service.');
+    if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+      console.error(`[API Network Error] ${method} ${url}:`, netErr);
+    }
+    const error = new Error('Unable to connect to application service. Please check your network connection.');
     error.name = 'NetworkError';
     error.status = 0;
     error.originalError = netErr;
@@ -52,21 +88,56 @@ async function request(path, options = {}) {
   }
 
   // Verify response type: if static server or CDN returned an HTML error page or index.html rewrite,
-  // that indicates the API service endpoint is unreachable, not an application-level not-found.
+  // that indicates the API service endpoint is unreachable or misconfigured.
   const contentType = (response.headers && response.headers.get('content-type')) || '';
   const isJson = contentType.includes('application/json');
 
-  if (!isJson) {
-    const error = new Error('Unable to connect to application service.');
-    error.name = 'NetworkError';
-    error.status = response.status >= 400 ? response.status : 503;
-    error.response = { status: error.status, data: null };
+  let data = null;
+  if (isJson) {
+    try {
+      data = await response.json();
+    } catch {
+      data = {};
+    }
+  } else {
+    // Non-JSON response (HTML error page, 502 Bad Gateway from reverse proxy, 404 HTML, etc.)
+    const text = await response.text().catch(() => '');
+    if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+      console.warn(`[API Non-JSON Response] ${method} ${url} -> Status ${response.status}:`, text.slice(0, 300));
+    }
+
+    let message = 'Unable to connect to application service.';
+    if (response.status === 404) {
+      message = `API endpoint not found (404). Please verify backend configuration.`;
+    } else if (response.status === 502 || response.status === 503 || response.status === 504) {
+      message = 'Backend application service is currently starting up. Please retry in a few seconds.';
+    } else if (response.status >= 500) {
+      message = `Backend server error (${response.status}). Please try again later.`;
+    }
+
+    const error = new Error(message);
+    error.name = 'HttpError';
+    error.status = response.status;
+    error.response = { status: response.status, data: null, text };
     throw error;
   }
 
-  const data = await response.json().catch(() => ({}));
+  if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+    console.log(`[API Response] ${method} ${url} -> ${response.status}`, data);
+  }
+
   if (!response.ok) {
-    const message = data.message || `Request failed with status ${response.status}`;
+    let message = data?.message;
+    if (!message) {
+      if (response.status === 400) message = 'Bad request. Please check submitted data.';
+      else if (response.status === 401) message = 'Authentication required. Please log in.';
+      else if (response.status === 403) message = 'Access denied. You do not have permission.';
+      else if (response.status === 404) message = 'Resource not found.';
+      else if (response.status === 409) message = 'An account with this email or mobile already exists.';
+      else if (response.status >= 500) message = 'Internal server error. Please try again later.';
+      else message = `Request failed with status ${response.status}`;
+    }
+
     const error = new Error(message);
     error.status = response.status;
     error.response = { status: response.status, data };
@@ -74,6 +145,7 @@ async function request(path, options = {}) {
     error.isApplicationNotFound = response.status === 404 && data?.message === 'Application not found';
     throw error;
   }
+
   return data;
 }
 
@@ -129,12 +201,27 @@ export const authApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: emailOrMobile, password })
     }),
-  register: (name, email, mobile, password, confirmPassword) =>
-    request('/auth/register', {
+  register: (name, email, mobile, password, confirmPassword) => {
+    if (typeof name === 'object' && name !== null) {
+      const payload = name;
+      return request('/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: payload.name,
+          email: payload.email,
+          mobile: payload.mobile,
+          password: payload.password,
+          confirmPassword: payload.confirmPassword || payload.password
+        })
+      });
+    }
+    return request('/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, mobile, password, confirmPassword })
-    }),
+      body: JSON.stringify({ name, email, mobile, password, confirmPassword: confirmPassword || password })
+    });
+  },
   me: () => request('/auth/me')
 };
 
@@ -294,5 +381,12 @@ export const applicationApi = {
     })
 };
 
-
-
+export const assistantApi = {
+  chat: ({ message, sessionId, history, websiteContext }) =>
+    request('/assistant/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, sessionId, history, websiteContext })
+    }),
+  history: (sessionId) => request(`/assistant/history?sessionId=${encodeURIComponent(sessionId)}`)
+};

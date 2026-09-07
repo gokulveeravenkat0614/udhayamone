@@ -55,7 +55,16 @@ export const LoginPage = ({
         setErrorMessage(res?.message || 'Login failed. Please check your credentials.');
       }
     } catch (err) {
-      setErrorMessage(err.message || 'Login failed. Invalid email/mobile or password.');
+      const serverMsg = err.response?.data?.message || err.message;
+      if (err.status === 401) {
+        setErrorMessage(serverMsg || 'Invalid email/mobile or password.');
+      } else if (err.status === 404) {
+        setErrorMessage(serverMsg || 'Account not found. Please check your credentials or register.');
+      } else if (err.status >= 500) {
+        setErrorMessage(serverMsg || 'Server error. Please try again later.');
+      } else {
+        setErrorMessage(serverMsg || 'Login failed. Invalid email/mobile or password.');
+      }
     } finally {
       setLoading(false);
     }

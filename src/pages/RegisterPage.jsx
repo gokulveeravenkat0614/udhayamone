@@ -79,7 +79,18 @@ export const RegisterPage = ({
         setErrorMessage(res?.message || 'Registration failed. Please check your inputs.');
       }
     } catch (err) {
-      setErrorMessage(err.message || 'Registration failed. Email or Mobile may already be registered.');
+      const serverMsg = err.response?.data?.message || err.message;
+      if (err.status === 409) {
+        setErrorMessage(serverMsg || 'An account with this email or mobile number already exists. Please sign in instead.');
+      } else if (err.status === 400) {
+        setErrorMessage(serverMsg || 'Invalid registration details. Please check the form.');
+      } else if (err.status === 404) {
+        setErrorMessage(serverMsg || 'Registration endpoint not found (404). Please verify backend configuration.');
+      } else if (err.status >= 500) {
+        setErrorMessage(serverMsg || 'Server error. Please try again later.');
+      } else {
+        setErrorMessage(serverMsg || 'Unable to connect to application service. Please check your connection.');
+      }
     } finally {
       setLoading(false);
     }
