@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Camera, Upload, CheckCircle2, AlertCircle } from 'lucide-react';
 
-export function CameraCapture({ mode = 'document', title, onCapture }) {
+export function CameraCapture({ mode = 'document', title, onCapture, disabled = false }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -33,23 +33,40 @@ export function CameraCapture({ mode = 'document', title, onCapture }) {
   }, [mode]);
 
   const capture = () => {
+    if (disabled) return;
     const v = videoRef.current, c = canvasRef.current;
     if (!v?.videoWidth) return;
     c.width = v.videoWidth;
     c.height = v.videoHeight;
     c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
     c.toBlob(blob => {
-      setPreview(URL.createObjectURL(blob));
-      onCapture(blob);
+      if (blob) {
+        setPreview(URL.createObjectURL(blob));
+        setError('');
+        onCapture?.(blob);
+      }
     }, 'image/jpeg', 0.9);
   };
 
   const handleFileUpload = (e) => {
+    if (disabled) return;
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size === 0) {
+        setError('Selected file is empty. Please select a valid document.');
+      } else {
+        setError('');
+      }
       setPreview(URL.createObjectURL(file));
-      onCapture(file);
+      onCapture?.(file);
     }
+    e.target.value = '';
+  };
+
+  const handleClear = () => {
+    setPreview(null);
+    setError('');
+    onCapture?.(null);
   };
 
   return (
@@ -80,8 +97,19 @@ export function CameraCapture({ mode = 'document', title, onCapture }) {
       <canvas ref={canvasRef} className="hidden" />
 
       {preview && (
-        <div className="mt-3 text-xs text-emerald-700 font-semibold flex items-center gap-1.5">
-          <CheckCircle2 className="w-4 h-4" /> Image selected and ready.
+        <div className="mt-3 flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-semibold">
+          <div className="flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span>Image captured / selected and ready.</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleClear}
+            disabled={disabled}
+            className="text-[11px] text-slate-500 hover:text-rose-600 font-bold underline cursor-pointer"
+          >
+            Remove
+          </button>
         </div>
       )}
 
@@ -89,7 +117,7 @@ export function CameraCapture({ mode = 'document', title, onCapture }) {
         {ready && (
           <button
             type="button"
-            disabled={!ready}
+            disabled={!ready || disabled}
             onClick={capture}
             className="flex-1 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-800 disabled:bg-slate-300 text-white text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer"
           >
@@ -99,14 +127,15 @@ export function CameraCapture({ mode = 'document', title, onCapture }) {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp,image/jpg"
           className="hidden"
           onChange={handleFileUpload}
         />
         <button
           type="button"
+          disabled={disabled}
           onClick={() => fileInputRef.current?.click()}
-          className={`py-2.5 px-4 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer ${ready ? '' : 'w-full'}`}
+          className={`py-2.5 px-4 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 disabled:bg-slate-100 disabled:text-slate-400 text-slate-700 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer ${ready ? '' : 'w-full'}`}
         >
           <Upload className="w-4 h-4" /> Upload Image File
         </button>

@@ -6,6 +6,12 @@ import { COMPLIANCE_ITEMS, COMPLIANCE_SUMMARY, CALENDAR_EVENTS } from '../src/da
 import { SCHEMES_DATA } from '../src/data/schemesData.js';
 import { INITIAL_APPLICATIONS } from '../src/data/initialApplications.js';
 import { validateUploadedDocumentAgainstDatabase, INITIAL_DATABASE_DOCUMENT_RECORDS } from '../src/services/databaseService.js';
+import { 
+  canProceedToSelfie, 
+  canOpenSelfieRoute, 
+  canProceedToAnalysis, 
+  validateDocumentUpload 
+} from '../src/services/verificationValidation.js';
 
 let passed = 0;
 let failed = 0;
@@ -338,6 +344,65 @@ tgItems.forEach(item => {
     assert(!item.authority.includes(keyword), `Compliance item '${item.title}' authority does NOT contain '${keyword}'`);
   });
 });
+
+// TEST SUITE 16: VERIFY FLOW DOCUMENT VALIDATION & DIRECT ROUTE PROTECTION (ACCEPTANCE TESTS)
+console.log("\n▶ TEST SUITE 16: Verify Flow Document Validation & Direct Route Protection");
+
+// 1. Click Continue without uploading document MUST stay on Documents
+const testCase1 = canProceedToSelfie({ documentFile: null });
+assert(!testCase1.canProceed, "Acceptance Test 2: Continue without document is blocked");
+assert(testCase1.error === "Please upload your identity document before continuing.", "Acceptance Test 2: Shows 'Please upload your identity document before continuing.'");
+
+// 2. Start upload but do not finish MUST NOT open Selfie
+const validDocFile = { name: "pan_front.jpg", size: 245000, type: "image/jpeg" };
+const testCase2 = canProceedToSelfie({ documentFile: validDocFile, documentUploadInProgress: true });
+assert(!testCase2.canProceed, "Acceptance Test 6: In-progress upload blocks proceeding to Selfie");
+assert(testCase2.error === "Please wait for the document upload to complete.", "Acceptance Test 6: Shows 'Please wait for the document upload to complete.'");
+
+// 3. Upload fails MUST NOT open Selfie
+const testCase3 = canProceedToSelfie({ 
+  documentFile: null, 
+  documentUploadFailed: true, 
+  documentUploadError: "Document upload failed. Please upload again." 
+});
+assert(!testCase3.canProceed, "Acceptance Test 7: Failed upload blocks proceeding to Selfie");
+assert(testCase3.error === "Document upload failed. Please upload again.", "Acceptance Test 7: Shows upload error message");
+
+// 4. Empty file upload MUST NOT open Selfie
+const emptyFile = { name: "empty.jpg", size: 0, type: "image/jpeg" };
+const testCaseEmpty = canProceedToSelfie({ documentFile: emptyFile });
+assert(!testCaseEmpty.canProceed, "Empty file is blocked from proceeding to Selfie");
+assert(testCaseEmpty.error === "Uploaded document file is empty. Please upload a valid identity document.", "Empty file shows non-empty validation error");
+
+// 5. Unsupported file format MUST NOT open Selfie
+const unsupportedFile = { name: "document.pdf", size: 500000, type: "application/pdf" };
+const testCaseUnsupported = canProceedToSelfie({ documentFile: unsupportedFile });
+assert(!testCaseUnsupported.canProceed, "Unsupported file format is blocked from proceeding to Selfie");
+assert(testCaseUnsupported.error === "Unsupported document type. Please upload a JPEG, PNG, or WEBP image.", "Unsupported format shows image format requirement");
+
+// 6. Direct Route Protection: Refresh or attempt to directly open Selfie without valid document MUST return to Documents
+const testCaseRoute = canOpenSelfieRoute({ documentFile: null });
+assert(!testCaseRoute.allowed, "Acceptance Test 8: Direct Selfie route without document is blocked");
+assert(testCaseRoute.redirectTo === '/verify', "Acceptance Test 8: Redirects to Documents step (/verify)");
+assert(testCaseRoute.error === "Please upload your identity document first.", "Acceptance Test 8: Shows 'Please upload your identity document first.'");
+
+// 7. Successful document upload MUST open Selfie / Capture Photo
+const testCaseSuccess = canProceedToSelfie({ 
+  documentFile: validDocFile, 
+  documentUploadInProgress: false, 
+  documentUploadFailed: false 
+});
+assert(testCaseSuccess.canProceed, "Acceptance Test 5: Valid uploaded document allows proceeding to Selfie");
+assert(testCaseSuccess.error === null, "Acceptance Test 5: No errors when proceeding with valid document");
+
+// 8. Direct Route Protection with valid document allows opening Selfie
+const testCaseRouteAllowed = canOpenSelfieRoute({ documentFile: validDocFile });
+assert(testCaseRouteAllowed.allowed, "Direct Selfie route allowed when valid document is present");
+
+// 9. Complete workflow: Document + Selfie allows proceeding to AI Analysis
+const validSelfie = { name: "selfie.jpg", size: 310000, type: "image/jpeg" };
+const testCaseAnalysis = canProceedToAnalysis({ documentFile: validDocFile, selfieFile: validSelfie });
+assert(testCaseAnalysis.canProceed, "Acceptance Test 9: Complete document + selfie allows proceeding to AI Analysis");
 
 console.log("\n=======================================================");
 console.log(`🏁 TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);

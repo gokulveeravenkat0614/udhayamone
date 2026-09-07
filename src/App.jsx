@@ -35,7 +35,10 @@ import {
 
 // Lightweight URL Route Parser
 function parseRoute(pathname) {
-  const clean = (pathname || '/').replace(/\/+$/, '') || '/';
+  const [pathPart, searchPart] = (pathname || '/').split('?');
+  const clean = (pathPart || '/').replace(/\/+$/, '') || '/';
+  const queryParams = new URLSearchParams(searchPart || (typeof window !== 'undefined' ? window.location.search : ''));
+  const queryStep = queryParams.get('step');
 
   if (clean === '/' || clean === '') return { name: 'home', path: '/' };
   if (clean === '/login') return { name: 'login', path: '/login' };
@@ -43,7 +46,14 @@ function parseRoute(pathname) {
   if (clean === '/dashboard') return { name: 'dashboard', path: '/dashboard' };
   if (clean === '/my-applications') return { name: 'my-applications', path: '/my-applications' };
   if (clean === '/profile') return { name: 'profile', path: '/profile' };
-  if (clean === '/verify') return { name: 'verify', path: '/verify' };
+  
+  // Match /verify and subroutes such as /verify/selfie, /verify/documents, or /verify?step=selfie
+  if (clean === '/verify' || clean.startsWith('/verify/')) {
+    const sub = clean.replace(/^\/verify\/?/, '').toLowerCase();
+    const subStep = sub || (queryStep === 'selfie' || queryStep === '2' ? 'selfie' : null);
+    return { name: 'verify', path: clean, subStep: subStep || null };
+  }
+
   if (clean === '/admin') return { name: 'admin', path: '/admin' };
   if (clean === '/officer') return { name: 'officer', path: '/officer' };
   if (clean === '/compliance') return { name: 'compliance', path: '/compliance' };
@@ -535,6 +545,7 @@ export default function App() {
         {currentRoute.name === 'verify' && (
           <VerificationPage 
             currentUser={currentUser}
+            subStep={currentRoute.subStep}
             onNavigate={navigate}
             onComplete={(verification) => {
               const newStatus = verification?.status === 'verified' ? 'verified' : 'pending';

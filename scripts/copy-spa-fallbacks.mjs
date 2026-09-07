@@ -1,4 +1,4 @@
-﻿import fs from 'fs';
+import fs from 'fs';
 import path from 'path';
 
 const distPath = path.resolve('dist');
@@ -18,6 +18,7 @@ if (fs.existsSync(indexHtmlPath)) {
     'my-applications',
     'profile',
     'verify',
+    'verify/selfie',
     'admin',
     'officer',
     'compliance',

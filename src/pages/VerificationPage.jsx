@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   Sparkles, 
@@ -13,16 +13,204 @@ import {
 } from 'lucide-react';
 import { CameraCapture } from '../components/CameraCapture';
 import { submitVerification, getStoredToken } from '../services/api';
+import { 
+  canProceedToSelfie, 
+  canOpenSelfieRoute, 
+  canProceedToAnalysis, 
+  validateDocumentUpload 
+} from '../services/verificationValidation';
 
-export function VerificationPage({ currentUser, onNavigate, onComplete, onBack }) {
+export function VerificationPage({ currentUser, subStep, onNavigate, onComplete, onBack }) {
   const [step, setStep] = useState(1);
   const [document1, setDocument1] = useState(null);
   const [document2, setDocument2] = useState(null);
   const [selfie, setSelfie] = useState(null);
+  const [documentUploadInProgress, setDocumentUploadInProgress] = useState(false);
+  const [documentUploadSuccess, setDocumentUploadSuccess] = useState(false);
+  const [documentUploadFailed, setDocumentUploadFailed] = useState(false);
+  const [documentUploadError, setDocumentUploadError] = useState('');
+  const [docError, setDocError] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [authRequired, setAuthRequired] = useState(false);
+
+  // Direct Route Protection:
+  // If user opens or refreshes on /verify/selfie or sets step to 2 without a valid document:
+  // Redirect them back to Documents and show: "Please upload your identity document first."
+  useEffect(() => {
+    if (subStep === 'selfie' || step === 2) {
+      const check = canOpenSelfieRoute({ documentFile: document1 });
+      if (!check.allowed) {
+        setStep(1);
+        setDocError(check.error);
+        if (onNavigate) {
+          onNavigate(check.redirectTo || '/verify', { replace: true });
+        }
+      }
+    } else if (subStep === 'analysis' || step === 3) {
+      const check = canProceedToAnalysis({ documentFile: document1, selfieFile: selfie });
+      if (!check.canProceed) {
+        if (check.redirectTo === '/verify') {
+          setStep(1);
+          setDocError(check.error);
+        } else {
+          setStep(2);
+          setError(check.error);
+        }
+        if (onNavigate) {
+          onNavigate(check.redirectTo, { replace: true });
+        }
+      }
+    } else if (subStep === 'documents' || subStep === '1' || subStep === null) {
+      if (step !== 1 && !document1) {
+        setStep(1);
+      }
+    }
+  }, [subStep, step, document1, selfie, onNavigate]);
+
+  // Handle document file capture and upload validation
+  const handleDocumentCapture = async (fileOrBlob) => {
+    setDocError('');
+
+    if (!fileOrBlob) {
+      setDocument1(null);
+      setDocumentUploadSuccess(false);
+      setDocumentUploadInProgress(false);
+      setDocumentUploadFailed(false);
+      setDocumentUploadError('');
+      return;
+    }
+
+    setDocumentUploadInProgress(true);
+    setDocumentUploadFailed(false);
+    setDocumentUploadSuccess(false);
+    setDocumentUploadError('');
+
+    try {
+      // 1. Validate file existence and non-empty
+      if (!fileOrBlob.size || fileOrBlob.size === 0) {
+        throw new Error("Uploaded file is empty. Please select a valid document.");
+      }
+
+      // 2. Validate supported format
+      const mimeType = (fileOrBlob.type || '').toLowerCase();
+      const validMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+      if (mimeType && !validMimes.includes(mimeType) && !mimeType.startsWith('image/')) {
+        throw new Error("Unsupported document type. Please upload a JPEG, PNG, or WEBP image.");
+      }
+
+      // 3. Validate size limit (10MB)
+      if (fileOrBlob.size > 10 * 1024 * 1024) {
+        throw new Error("Document exceeds 10MB limit. Please upload a smaller image file.");
+      }
+
+      // 4. Validate file readability
+      await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error("Failed to read document file. Please upload again."));
+        setTimeout(() => {
+          try {
+            reader.readAsArrayBuffer(fileOrBlob);
+          } catch (readErr) {
+            reject(readErr);
+          }
+        }, 150);
+      });
+
+      // Upload and validation completed successfully
+      setDocument1(fileOrBlob);
+      setDocumentUploadSuccess(true);
+      setDocumentUploadFailed(false);
+      setDocumentUploadInProgress(false);
+      setDocumentUploadError('');
+      setDocError('');
+    } catch (err) {
+      setDocument1(null);
+      setDocumentUploadSuccess(false);
+      setDocumentUploadInProgress(false);
+      setDocumentUploadFailed(true);
+      const msg = err.message || "Document upload failed. Please upload again.";
+      setDocumentUploadError(msg);
+      setDocError(msg);
+    }
+  };
+
+  // Continue to Selfie step with strict root-cause validation
+  const handleContinueToSelfie = () => {
+    setDocError('');
+
+    const check = canProceedToSelfie({
+      documentFile: document1,
+      documentUploadInProgress,
+      documentUploadFailed,
+      documentUploadError
+    });
+
+    if (!check.canProceed) {
+      setDocError(check.error);
+      return;
+    }
+
+    // Only now proceed
+    goToSelfieStep();
+  };
+
+  const goToSelfieStep = () => {
+    setDocError('');
+    setStep(2);
+    if (onNavigate) {
+      onNavigate('/verify/selfie');
+    }
+  };
+
+  const handleProceedToAnalysis = () => {
+    setError('');
+
+    const check = canProceedToAnalysis({
+      documentFile: document1,
+      selfieFile: selfie
+    });
+
+    if (!check.canProceed) {
+      if (check.redirectTo === '/verify') {
+        setDocError(check.error);
+        setStep(1);
+      } else {
+        setError(check.error);
+      }
+      if (onNavigate) onNavigate(check.redirectTo);
+      return;
+    }
+
+    setStep(3);
+    if (onNavigate) {
+      onNavigate('/verify/analysis');
+    }
+  };
+
+  const handleBackToDocuments = () => {
+    setStep(1);
+    if (onNavigate) {
+      onNavigate('/verify');
+    }
+  };
+
+  const handleStartAnother = () => {
+    setStep(1);
+    setResult(null);
+    setDocument1(null);
+    setDocument2(null);
+    setSelfie(null);
+    setDocumentUploadInProgress(false);
+    setDocumentUploadSuccess(false);
+    setDocumentUploadFailed(false);
+    setDocumentUploadError('');
+    setDocError('');
+    setError('');
+    if (onNavigate) onNavigate('/verify');
+  };
 
   // Check authentication status
   const token = getStoredToken();
@@ -147,18 +335,20 @@ export function VerificationPage({ currentUser, onNavigate, onComplete, onBack }
           const isCompleted = step > stepNum;
 
           return (
-            <div
+            <button
               key={label}
-              className={`p-3 rounded-xl text-center text-xs font-bold transition-all ${
+              type="button"
+              onClick={() => handleStepClick(stepNum)}
+              className={`p-3 rounded-xl text-center text-xs font-bold transition-all cursor-pointer ${
                 isActive
-                  ? 'bg-brand-700 text-white shadow-sm'
+                  ? 'bg-brand-700 text-white shadow-sm ring-2 ring-brand-700/50'
                   : isCompleted
                   ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                  : 'bg-slate-100 text-slate-500'
+                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
               }`}
             >
               {isCompleted ? '✓' : `${stepNum}.`} {label}
-            </div>
+            </button>
           );
         })}
       </div>
@@ -184,10 +374,54 @@ export function VerificationPage({ currentUser, onNavigate, onComplete, onBack }
             )}
           </div>
 
+          {/* Validation Error Banner */}
+          {docError && (
+            <div className="rounded-2xl bg-rose-50 border border-rose-200 p-4 text-xs text-rose-800 flex items-start gap-3 animate-fadeIn shadow-sm">
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-rose-600" />
+              <div className="space-y-1">
+                <div className="font-bold text-slate-900">{docError}</div>
+                {documentUploadFailed && (
+                  <p className="text-slate-600 text-[11px]">
+                    Please ensure the file is an image (JPEG, PNG, WEBP) under 10MB and is not empty or corrupted. You can retry selecting or capturing your document.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Upload In Progress Banner */}
+          {documentUploadInProgress && (
+            <div className="rounded-2xl bg-blue-50 border border-blue-200 p-4 text-xs text-blue-900 flex items-center gap-3 animate-fadeIn shadow-sm">
+              <span className="w-4 h-4 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin shrink-0" />
+              <div className="font-medium">
+                Uploading and validating identity document... Please wait.
+              </div>
+            </div>
+          )}
+
+          {/* Document Ready Success Banner */}
+          {documentUploadSuccess && document1 && !docError && (
+            <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-xs text-emerald-900 flex items-center justify-between animate-fadeIn shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                <div>
+                  <div className="font-bold">Identity Document Ready</div>
+                  <div className="text-[11px] text-emerald-700">
+                    {document1.name || 'Captured Document Photo'} • {(document1.size / 1024).toFixed(1)} KB
+                  </div>
+                </div>
+              </div>
+              <span className="px-3 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 uppercase tracking-wider">
+                Validated
+              </span>
+            </div>
+          )}
+
           <CameraCapture
-            title="Primary identity document"
+            title="Primary identity document (Required)"
             mode="document"
-            onCapture={setDocument1}
+            onCapture={handleDocumentCapture}
+            disabled={documentUploadInProgress}
           />
 
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
@@ -197,19 +431,35 @@ export function VerificationPage({ currentUser, onNavigate, onComplete, onBack }
             <input
               type="file"
               accept="image/*"
+              disabled={documentUploadInProgress}
               onChange={(e) => setDocument2(e.target.files?.[0] || null)}
-              className="text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100 cursor-pointer"
+              className="text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100 cursor-pointer disabled:cursor-not-allowed"
             />
           </div>
 
           <button
             type="button"
-            disabled={!document1}
-            onClick={() => setStep(2)}
-            className="w-full py-3.5 rounded-xl bg-brand-700 hover:bg-brand-800 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold flex justify-center gap-2 items-center transition cursor-pointer active:scale-95"
+            onClick={handleContinueToSelfie}
+            disabled={documentUploadInProgress}
+            className={`w-full py-3.5 rounded-xl text-white text-xs font-bold flex justify-center gap-2 items-center transition cursor-pointer active:scale-95 ${
+              documentUploadInProgress
+                ? 'bg-brand-500 cursor-wait'
+                : !document1 || documentUploadFailed
+                ? 'bg-slate-300 hover:bg-slate-400 text-slate-700'
+                : 'bg-brand-700 hover:bg-brand-800 shadow-md shadow-brand-700/20'
+            }`}
           >
-            <span>Continue to Selfie</span>
-            <ArrowRight className="w-4 h-4" />
+            {documentUploadInProgress ? (
+              <>
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Validating Document...</span>
+              </>
+            ) : (
+              <>
+                <span>Continue to Selfie</span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </button>
         </div>
       )}
@@ -233,7 +483,7 @@ export function VerificationPage({ currentUser, onNavigate, onComplete, onBack }
           <div className="flex gap-3">
             <button
               type="button"
-              onClick={() => setStep(1)}
+              onClick={handleBackToDocuments}
               className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition cursor-pointer"
             >
               Back to Documents
@@ -241,7 +491,7 @@ export function VerificationPage({ currentUser, onNavigate, onComplete, onBack }
             <button
               type="button"
               disabled={!selfie}
-              onClick={() => setStep(3)}
+              onClick={handleProceedToAnalysis}
               className="flex-1 py-3 rounded-xl bg-brand-700 hover:bg-brand-800 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold transition cursor-pointer active:scale-95 flex items-center justify-center gap-1.5"
             >
               <span>Proceed to AI Analysis</span>
@@ -303,7 +553,10 @@ export function VerificationPage({ currentUser, onNavigate, onComplete, onBack }
             <button
               type="button"
               disabled={loading}
-              onClick={() => setStep(2)}
+              onClick={() => {
+                setStep(2);
+                if (onNavigate) onNavigate('/verify/selfie');
+              }}
               className="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition cursor-pointer"
             >
               Back
@@ -393,13 +646,7 @@ export function VerificationPage({ currentUser, onNavigate, onComplete, onBack }
 
             <button
               type="button"
-              onClick={() => {
-                setStep(1);
-                setResult(null);
-                setDocument1(null);
-                setDocument2(null);
-                setSelfie(null);
-              }}
+              onClick={handleStartAnother}
               className="px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-2 transition cursor-pointer"
             >
               <RotateCcw className="w-4 h-4" />
