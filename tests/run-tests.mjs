@@ -12,6 +12,12 @@ import {
   canProceedToAnalysis, 
   validateDocumentUpload 
 } from '../src/services/verificationValidation.js';
+import {
+  classifyDocumentError,
+  calculateDocumentStats,
+  filterDocuments,
+  extractDocumentsFromResponse
+} from '../src/services/documentChecklistHelper.js';
 
 let passed = 0;
 let failed = 0;
@@ -403,6 +409,74 @@ assert(testCaseRouteAllowed.allowed, "Direct Selfie route allowed when valid doc
 const validSelfie = { name: "selfie.jpg", size: 310000, type: "image/jpeg" };
 const testCaseAnalysis = canProceedToAnalysis({ documentFile: validDocFile, selfieFile: validSelfie });
 assert(testCaseAnalysis.canProceed, "Acceptance Test 9: Complete document + selfie allows proceeding to AI Analysis");
+
+// TEST SUITE 17: REQUIRED DOCUMENTS CHECKLIST LOADING, ERROR MAPPING & FILTERING
+console.log("\n▶ TEST SUITE 17: Required Documents Checklist Loading, Error Mapping & Filtering");
+
+// 1. Error classification mappings
+const authErr401 = classifyDocumentError({ status: 401 });
+assert(authErr401.errorType === 'auth', "HTTP 401 classified as 'auth' errorType");
+assert(authErr401.error === "Your session has expired. Please log in again.", "HTTP 401 produces session expired error message");
+
+const authErrExpired = classifyDocumentError({ message: "jwt expired" });
+assert(authErrExpired.errorType === 'auth', "JWT expired message classified as 'auth' errorType");
+
+const forbiddenErr403 = classifyDocumentError({ status: 403 });
+assert(forbiddenErr403.errorType === 'forbidden', "HTTP 403 classified as 'forbidden' errorType");
+assert(forbiddenErr403.error === "You do not have permission to access this application.", "HTTP 403 produces permission denied message");
+
+const notFoundErr404 = classifyDocumentError({ status: 404 });
+assert(notFoundErr404.errorType === 'not_found', "HTTP 404 classified as 'not_found' errorType");
+assert(notFoundErr404.error === "Application not found.", "HTTP 404 produces application not found message");
+
+const serverErr500 = classifyDocumentError({ status: 500 });
+assert(serverErr500.errorType === 'network', "HTTP 500 classified as 'network' errorType");
+assert(serverErr500.error === "Unable to load document requirements. Please try again.", "HTTP 500 produces retryable error message");
+
+const networkConnErr = classifyDocumentError({ message: "Network Error: Failed to fetch" });
+assert(networkConnErr.errorType === 'network', "Network failure classified as 'network' errorType");
+
+// 2. Document statistics calculation
+const testDocs = [
+  { id: 'd1', name: 'PAN Card', status: 'APPROVED', fileName: 'pan.pdf' },
+  { id: 'd2', name: 'Aadhaar', status: 'VERIFIED', fileName: 'aadhaar.pdf' },
+  { id: 'd3', name: 'Project Report', status: 'REJECTED', fileName: 'report.pdf' },
+  { id: 'd4', name: 'Site Plan', status: 'NOT UPLOADED', fileName: null },
+  { id: 'd5', name: 'Factory License', status: 'NOT UPLOADED', fileName: '' },
+];
+const stats = calculateDocumentStats(testDocs);
+assert(stats.totalCount === 5, "Document stats correctly calculates totalCount=5");
+assert(stats.approvedCount === 2, "Document stats correctly calculates approvedCount=2 (APPROVED + VERIFIED)");
+assert(stats.rejectedCount === 1, "Document stats correctly calculates rejectedCount=1");
+assert(stats.notUploadedCount === 2, "Document stats correctly calculates notUploadedCount=2");
+assert(stats.percentageApproved === 40, "Document stats correctly calculates percentageApproved=40%");
+
+const emptyStats = calculateDocumentStats([]);
+assert(emptyStats.totalCount === 0, "Empty document list gives totalCount=0");
+assert(emptyStats.percentageApproved === 0, "Empty document list gives percentageApproved=0");
+
+// 3. Tab filtering
+const allFilter = filterDocuments(testDocs, 'all');
+assert(allFilter.length === 5, "Tab filter 'all' returns all 5 requirements");
+
+const approvedFilter = filterDocuments(testDocs, 'approved');
+assert(approvedFilter.length === 2, "Tab filter 'approved' returns only 2 approved requirements");
+assert(approvedFilter.every(d => d.status === 'APPROVED' || d.status === 'VERIFIED'), "Tab filter 'approved' items have approved/verified status");
+
+const rejectedFilter = filterDocuments(testDocs, 'rejected');
+assert(rejectedFilter.length === 1, "Tab filter 'rejected' returns 1 rejected requirement");
+assert(rejectedFilter[0].id === 'd3', "Tab filter 'rejected' returns expected document");
+
+const notUploadedFilter = filterDocuments(testDocs, 'not_uploaded');
+assert(notUploadedFilter.length === 2, "Tab filter 'not_uploaded' returns 2 un-uploaded requirements");
+
+// 4. Response parsing
+const rawArr = [{ id: '1' }, { id: '2' }];
+assert(extractDocumentsFromResponse(rawArr).length === 2, "Response extractor parses raw array");
+assert(extractDocumentsFromResponse({ documents: rawArr }).length === 2, "Response extractor parses { documents: [] }");
+assert(extractDocumentsFromResponse({ data: { documents: rawArr } }).length === 2, "Response extractor parses { data: { documents: [] } }");
+assert(extractDocumentsFromResponse({ data: rawArr }).length === 2, "Response extractor parses { data: [] }");
+assert(extractDocumentsFromResponse(null).length === 0, "Response extractor gracefully handles null");
 
 console.log("\n=======================================================");
 console.log(`🏁 TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);

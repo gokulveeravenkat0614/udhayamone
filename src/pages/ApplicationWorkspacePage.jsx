@@ -140,21 +140,13 @@ export const ApplicationWorkspacePage = ({
     }
   };
 
-  // Documents updated callback
-  const handleDocumentsUpdated = async (updatedDocs) => {
-    if (!appData) return;
-    setAppData(prev => ({
+  // Documents updated callback (memoized to prevent re-render cascading)
+  const handleDocumentsUpdated = React.useCallback((updatedDocs) => {
+    setAppData(prev => prev ? ({
       ...prev,
       documents: updatedDocs
-    }));
-    // Also sync to backend
-    try {
-      const targetId = appData.applicationId || appData._id;
-      await applicationApi.update(targetId, { documents: updatedDocs });
-    } catch (err) {
-      console.warn('Silent doc sync error:', err);
-    }
-  };
+    }) : prev);
+  }, []);
 
   if (loading) {
     return (

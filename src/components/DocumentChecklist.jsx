@@ -3,7 +3,7 @@ import {
   FileText, 
   Upload, 
   CheckCircle2, 
-  XCircle,
+  XCircle, 
   Download, 
   Trash2, 
   RefreshCw, 
@@ -13,9 +13,16 @@ import {
   X,
   Database,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  LogIn
 } from 'lucide-react';
 import { applicationApi } from '../services/api';
+import { 
+  classifyDocumentError, 
+  calculateDocumentStats, 
+  filterDocuments, 
+  extractDocumentsFromResponse 
+} from '../services/documentChecklistHelper';
 
 const formatDisplayFileSize = (fileSize) => {
   if (!fileSize) return '';
@@ -42,24 +49,37 @@ export const DocumentChecklist = ({
   applicationId = null,
   userId = null
 }) => {
-  const [docsList, setDocsList] = useState(documents);
+  const [docsList, setDocsList] = useState(Array.isArray(documents) ? documents : []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [errorType, setErrorType] = useState(null); // 'not_found', 'network', 'auth'
+  const [errorType, setErrorType] = useState(null); // 'not_found', 'network', 'auth', 'forbidden', 'invalid_id'
   const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'approved', 'rejected', 'not_uploaded'
   const [sessionToast, setSessionToast] = useState('');
   const [toastType, setToastType] = useState('info'); // 'info', 'success', 'error'
   const fileInputRef = useRef(null);
   const [activeUploadDocId, setActiveUploadDocId] = useState(null);
 
+  // Keep callback reference updated without triggering re-fetch cascades
+  const onDocsUpdatedRef = useRef(onDocumentsUpdated);
+  useEffect(() => {
+    onDocsUpdatedRef.current = onDocumentsUpdated;
+  }, [onDocumentsUpdated]);
+
   // Load documents from backend API when applicationId is provided
   const loadDocuments = useCallback(async () => {
     if (!applicationId) {
-      setDocsList(documents || []);
-      setError(null);
-      setErrorType(null);
+      if (Array.isArray(documents) && documents.length > 0) {
+        setDocsList(documents);
+        setError(null);
+        setErrorType(null);
+        setLoading(false);
+        return documents;
+      }
+      setDocsList([]);
+      setError("Application information is unavailable. Please reopen the application.");
+      setErrorType('invalid_id');
       setLoading(false);
-      return;
+      return [];
     }
 
     try {
@@ -67,71 +87,52 @@ export const DocumentChecklist = ({
       setError(null);
       setErrorType(null);
       const res = await applicationApi.getDocuments(applicationId);
-      const data = res?.data || res;
-
-      const realDocuments = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.documents)
-          ? data.documents
-          : [];
+      const realDocuments = extractDocumentsFromResponse(res);
 
       setDocsList(realDocuments);
       setError(null);
       setErrorType(null);
-      if (onDocumentsUpdated) {
-        onDocumentsUpdated(realDocuments);
-      }
+      return realDocuments;
     } catch (err) {
       console.error('Failed to load documents from backend API:', err);
+      const classified = classifyDocumentError(err);
+      setError(classified.error);
+      setErrorType(classified.errorType);
 
-      const status = err.status || err.response?.status;
-      const isAuth = status === 401 || err.message?.includes('Authentication required') || err.message?.includes('token') || err.message?.includes('expired');
-      const isAppNotFound = err.isApplicationNotFound || (status === 404 && err.response?.data?.message === 'Application not found');
-
-      if (isAuth) {
-        setError("Session expired. Please log in again.");
-        setErrorType('auth');
-        setDocsList([]);
-      } else if (isAppNotFound) {
-        setError("Application not found.");
-        setErrorType('not_found');
-        setDocsList([]);
+      if (classified.errorType === 'network' && Array.isArray(documents) && documents.length > 0) {
+        setDocsList(documents);
       } else {
-        // Network errors, server 500, HTML 404 from static CDN, etc.
-        setError("Unable to connect to application service.");
-        setErrorType('network');
-        // Preserve evaluated documents if available
-        if (documents && documents.length > 0) {
-          setDocsList(documents);
-        } else {
-          setDocsList([]);
-        }
+        setDocsList([]);
       }
+      return null;
     } finally {
       setLoading(false);
     }
-  }, [applicationId, documents, onDocumentsUpdated]);
+  }, [applicationId]);
 
+  // Load documents once when applicationId changes or mounts
   useEffect(() => {
     if (applicationId) {
       loadDocuments();
     }
   }, [applicationId, loadDocuments]);
 
-  // Synchronize with parent props during render if no active error and applicationId didn't fetch yet
-  const [prevDocuments, setPrevDocuments] = useState(documents);
-  if (documents !== prevDocuments) {
-    setPrevDocuments(documents);
-    if (!applicationId) {
+  // Synchronize preview documents when no applicationId is set
+  useEffect(() => {
+    if (!applicationId && Array.isArray(documents) && documents.length > 0) {
       setDocsList(documents);
+      setError(null);
+      setErrorType(null);
     }
-  }
+  }, [applicationId, documents]);
 
-  const totalCount = docsList.length;
-  const approvedCount = docsList.filter(d => d.status === 'APPROVED' || d.status === 'VERIFIED').length;
-  const rejectedCount = docsList.filter(d => d.status === 'REJECTED').length;
-  const notUploadedCount = docsList.filter(d => d.status === 'NOT UPLOADED' || !d.fileName).length;
-  const percentageApproved = totalCount > 0 ? Math.round((approvedCount / totalCount) * 100) : 0;
+  const {
+    totalCount,
+    approvedCount,
+    rejectedCount,
+    notUploadedCount,
+    percentageApproved
+  } = calculateDocumentStats(docsList);
 
   // Real frontend file selection trigger (handles both initial upload & replace)
   const handleTriggerUpload = (docId) => {
@@ -185,7 +186,10 @@ export const DocumentChecklist = ({
         });
 
         if (res && res.success) {
-          await loadDocuments();
+          const freshDocs = await loadDocuments();
+          if (onDocsUpdatedRef.current && freshDocs) {
+            onDocsUpdatedRef.current(freshDocs);
+          }
           setToastType('success');
           setSessionToast(`APPROVED: "${file.name}" saved and verified against database record for ${documentType}.`);
           setTimeout(() => setSessionToast(''), 4500);
@@ -214,7 +218,10 @@ export const DocumentChecklist = ({
     if (applicationId) {
       try {
         await applicationApi.deleteDocument(applicationId, docId);
-        await loadDocuments();
+        const freshDocs = await loadDocuments();
+        if (onDocsUpdatedRef.current && freshDocs) {
+          onDocsUpdatedRef.current(freshDocs);
+        }
         setToastType('info');
         setSessionToast(`Removed file for "${targetDoc?.name || 'document'}". Status reset to NOT UPLOADED.`);
         setTimeout(() => setSessionToast(''), 3000);
@@ -242,8 +249,8 @@ export const DocumentChecklist = ({
     });
 
     setDocsList(updated);
-    if (onDocumentsUpdated) {
-      onDocumentsUpdated(updated);
+    if (onDocsUpdatedRef.current) {
+      onDocsUpdatedRef.current(updated);
     }
     setToastType('info');
     setSessionToast(`Removed file for "${targetDoc?.name || 'document'}". Status reset to NOT UPLOADED.`);
@@ -268,12 +275,7 @@ export const DocumentChecklist = ({
   };
 
   // Filtering
-  const filteredDocs = docsList.filter(doc => {
-    if (activeFilter === 'approved') return doc.status === 'APPROVED' || doc.status === 'VERIFIED';
-    if (activeFilter === 'rejected') return doc.status === 'REJECTED';
-    if (activeFilter === 'not_uploaded') return doc.status === 'NOT UPLOADED' || !doc.fileName;
-    return true;
-  });
+  const filteredDocs = filterDocuments(docsList, activeFilter);
 
   const getStatusBadgeStyle = (status) => {
     switch (status) {
@@ -491,11 +493,30 @@ export const DocumentChecklist = ({
             )}
 
             {errorType === 'auth' && (
-              <p className="text-xs text-slate-600">Session expired. Please log in again.</p>
+              <div className="pt-2">
+                <p className="text-xs text-slate-600 mb-3">Your session has expired. Please log in again to continue.</p>
+                <button
+                  onClick={() => {
+                    window.location.href = '/login';
+                  }}
+                  className="px-4 py-2 rounded-xl bg-brand-700 text-white font-bold text-xs hover:bg-brand-800 transition-all cursor-pointer inline-flex items-center space-x-1.5"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>Log In</span>
+                </button>
+              </div>
+            )}
+
+            {errorType === 'forbidden' && (
+              <p className="text-xs text-slate-600">You do not have permission to access this application.</p>
             )}
 
             {errorType === 'not_found' && (
               <p className="text-xs text-slate-600">The requested application record could not be found in the database.</p>
+            )}
+
+            {errorType === 'invalid_id' && (
+              <p className="text-xs text-slate-600">Please navigate back to Applications and reopen the record.</p>
             )}
           </div>
         )}
@@ -506,7 +527,7 @@ export const DocumentChecklist = ({
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-6 h-6" />
             </div>
-            <h4 className="text-sm font-bold text-slate-900">Application found.</h4>
+            <h4 className="text-sm font-bold text-slate-900">No document requirements found for this application.</h4>
             <p className="text-xs font-semibold text-slate-600">0 requirements available.</p>
             <p className="text-[11px] text-slate-400">No statutory document requirements are registered for this profile.</p>
           </div>
@@ -523,7 +544,7 @@ export const DocumentChecklist = ({
             - Replace button
             - Delete button
         */}
-        {!loading && !error && (
+        {!loading && !error && totalCount > 0 && (
           <div className="mt-6 space-y-4">
             {filteredDocs.map((doc) => {
               const hasFile = Boolean(doc.fileName && doc.status !== 'NOT UPLOADED');
@@ -669,26 +690,9 @@ export const DocumentChecklist = ({
             })}
 
             {filteredDocs.length === 0 && (
-              totalCount === 0 ? (
-                <div className="py-12 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 p-6 space-y-3">
-                  <FileText className="w-10 h-10 text-slate-400 mx-auto" />
-                  <h4 className="text-sm font-bold text-slate-800">No documents uploaded yet.</h4>
-                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                    Required documents will appear here as you complete your application.
-                  </p>
-                  <button
-                    onClick={() => handleTriggerUpload(null)}
-                    className="px-4 py-2 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-bold text-xs transition-all inline-flex items-center space-x-1.5 cursor-pointer"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Upload Document</span>
-                  </button>
-                </div>
-              ) : (
-                <div className="py-8 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                  No documents found matching the "{activeFilter}" filter.
-                </div>
-              )
+              <div className="py-8 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                No documents found matching the "{activeFilter}" filter.
+              </div>
             )}
           </div>
         )}
