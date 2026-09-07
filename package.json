@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/copy-spa-fallbacks.mjs",
     "start": "node backend/server.js",
     "test": "node tests/run-tests.mjs && node tests/test-integration.mjs",
     "test:unit": "node tests/run-tests.mjs",
