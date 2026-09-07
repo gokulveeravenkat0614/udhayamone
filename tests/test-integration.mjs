@@ -667,6 +667,8 @@ const server = app.listen(5098, async () => {
     assert(Boolean(sampleArea.sourceTitle), "Area record contains official sourceTitle");
     assert(Boolean(sampleArea.conditions), "Area record contains statutory siting conditions");
     assert(Boolean(sampleArea.lastVerifiedAt), "Area record contains lastVerifiedAt date");
+    assert(typeof sampleArea.latitude === 'number' || (sampleArea.coordinates && typeof sampleArea.coordinates.lat === 'number'), "Area record contains valid latitude");
+    assert(typeof sampleArea.longitude === 'number' || (sampleArea.coordinates && typeof sampleArea.coordinates.lng === 'number'), "Area record contains valid longitude");
 
     // 6.10 Rule 2: Unonboarded state returns empty results (zero fake data)
     const otherStatesRes = await makeJsonRequest({ path: '/api/industry-areas?state=Other%20States' });

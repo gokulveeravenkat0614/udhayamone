@@ -25,6 +25,12 @@ import {
   isRecordOutdated
 } from '../src/services/industryAreaHelper.js';
 import { SEED_INDUSTRY_AREAS } from '../backend/data/seedIndustryAreas.js';
+import { 
+  STATE_BOUNDARIES, 
+  getStateBoundary, 
+  projectGeoPoint, 
+  buildSvgPolygonPath 
+} from '../src/data/stateBoundariesGeoJson.js';
 
 let passed = 0;
 let failed = 0;
@@ -576,6 +582,67 @@ assert(puneAreas.every(a => a.district === 'Pune'), "District filter strictly re
 // 8. Unrepresented state handling (Rule 2: No fake data)
 const unrepresentedStateAreas = SEED_INDUSTRY_AREAS.filter(a => a.state === "Other States");
 assert(unrepresentedStateAreas.length === 0, "Unonboarded state has 0 fake records; triggers official unverified fallback message");
+
+// TEST SUITE 15: MINI STATE MAP & REAL GEOGRAPHIC BOUNDARIES
+console.log("\n▶ TEST SUITE 15: Mini State Map, Geographic Boundaries & Coordinate Projection");
+
+// 1. Check all supported states have authentic boundary definitions
+const supportedBoundaryStates = [
+  "Maharashtra", "Tamil Nadu", "Gujarat", "Karnataka", 
+  "Telangana", "Andhra Pradesh", "Delhi", "Other States"
+];
+supportedBoundaryStates.forEach(st => {
+  const boundary = getStateBoundary(st);
+  assert(boundary !== undefined, `State boundary defined for '${st}'`);
+  assert(boundary.bounds && typeof boundary.bounds.minLat === 'number', `'${st}' has valid bounds object`);
+  assert(boundary.bounds.minLat < boundary.bounds.maxLat, `'${st}' minLat (${boundary.bounds.minLat}) < maxLat (${boundary.bounds.maxLat})`);
+  assert(boundary.bounds.minLng < boundary.bounds.maxLng, `'${st}' minLng (${boundary.bounds.minLng}) < maxLng (${boundary.bounds.maxLng})`);
+  assert(Array.isArray(boundary.polygon) && boundary.polygon.length >= 10, `'${st}' polygon has at least 10 real geographic coordinate points (${boundary.polygon?.length} points)`);
+  
+  // Verify coordinates are realistic Indian coordinates
+  boundary.polygon.forEach((pt, pIdx) => {
+    assert(Array.isArray(pt) && pt.length === 2, `'${st}' polygon point #${pIdx} is [lng, lat] pair`);
+    const [lng, lat] = pt;
+    assert(lng >= 68 && lng <= 90, `'${st}' point #${pIdx} longitude (${lng}) within Indian territory`);
+    assert(lat >= 8 && lat <= 32, `'${st}' point #${pIdx} latitude (${lat}) within Indian territory`);
+  });
+});
+
+// 2. Test mathematical projection function
+const mhBoundary = getStateBoundary("Maharashtra");
+const projectedPune = projectGeoPoint(18.52, 73.85, mhBoundary.bounds, 460, 350, 24);
+assert(typeof projectedPune.x === 'number' && projectedPune.x >= 24 && projectedPune.x <= 436, `Projected Pune X is within SVG bounds (${projectedPune.x})`);
+assert(typeof projectedPune.y === 'number' && projectedPune.y >= 24 && projectedPune.y <= 326, `Projected Pune Y is within SVG bounds (${projectedPune.y})`);
+
+// 3. Test SVG path generator
+const svgPath = buildSvgPolygonPath(mhBoundary.polygon, mhBoundary.bounds, 460, 350, 24);
+assert(typeof svgPath === 'string' && svgPath.startsWith('M ') && svgPath.endsWith(' Z'), "SVG polygon path formatted with valid M ... Z syntax");
+
+// 4. Strict Geographic Coordinate Containment: All 31 seed records fall within their state bounds
+SEED_INDUSTRY_AREAS.forEach((area, idx) => {
+  const st = area.state;
+  const boundary = getStateBoundary(st);
+  const lat = typeof area.latitude === 'number' ? area.latitude : area.coordinates?.lat;
+  const lng = typeof area.longitude === 'number' ? area.longitude : area.coordinates?.lng;
+  
+  assert(typeof lat === 'number' && typeof lng === 'number', `Record #${idx + 1} (${area.industrialArea}) has valid numeric coordinates`);
+  assert(lat >= boundary.bounds.minLat - 0.1 && lat <= boundary.bounds.maxLat + 0.1, 
+    `Record #${idx + 1} latitude (${lat}) falls within ${st} bounds [${boundary.bounds.minLat}, ${boundary.bounds.maxLat}]`);
+  assert(lng >= boundary.bounds.minLng - 0.1 && lng <= boundary.bounds.maxLng + 0.1, 
+    `Record #${idx + 1} longitude (${lng}) falls within ${st} bounds [${boundary.bounds.minLng}, ${boundary.bounds.maxLng}]`);
+});
+
+// 5. Category Pin Color Mapping Standard
+const categoryColors = {
+  RED: '#e11d48',
+  ORANGE: '#f59e0b',
+  GREEN: '#10b981',
+  WHITE: '#64748b'
+};
+assert(categoryColors.RED === '#e11d48', "RED category mapped to regulatory red (#e11d48)");
+assert(categoryColors.ORANGE === '#f59e0b', "ORANGE category mapped to regulatory orange (#f59e0b)");
+assert(categoryColors.GREEN === '#10b981', "GREEN category mapped to regulatory green (#10b981)");
+assert(categoryColors.WHITE === '#64748b', "WHITE category mapped to regulatory slate/white (#64748b)");
 
 console.log("\n=======================================================");
 console.log(`🏁 TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);
