@@ -516,6 +516,14 @@ const SEED_INDUSTRY_AREAS = [
   }
 ];
 
+// Explicitly ensure latitude & longitude exist at top level for all verified seed records
+SEED_INDUSTRY_AREAS.forEach(item => {
+  if (item.coordinates) {
+    if (typeof item.latitude !== 'number') item.latitude = item.coordinates.lat;
+    if (typeof item.longitude !== 'number') item.longitude = item.coordinates.lng;
+  }
+});
+
 module.exports = {
   SEED_INDUSTRY_AREAS
 };

@@ -47,6 +47,8 @@ async function ensureIndustryAreaRecords() {
           sourceUrl: item.sourceUrl,
           sourceTitle: item.sourceTitle,
           lastVerifiedAt: item.lastVerifiedAt,
+          latitude: item.latitude || (item.coordinates && item.coordinates.lat) || null,
+          longitude: item.longitude || (item.coordinates && item.coordinates.lng) || null,
           coordinates: item.coordinates,
           isVerified: item.isVerified
         });
@@ -283,7 +285,9 @@ async function createArea(req, res) {
       sourceUrl: sourceUrl || '',
       sourceTitle: sourceTitle.trim(),
       lastVerifiedAt: lastVerifiedAt ? new Date(lastVerifiedAt) : new Date(),
-      coordinates: coordinates || null,
+      latitude: (coordinates && typeof coordinates.lat === 'number') ? coordinates.lat : (typeof req.body.latitude === 'number' ? req.body.latitude : null),
+      longitude: (coordinates && typeof coordinates.lng === 'number') ? coordinates.lng : (typeof req.body.longitude === 'number' ? req.body.longitude : null),
+      coordinates: coordinates || (typeof req.body.latitude === 'number' && typeof req.body.longitude === 'number' ? { lat: req.body.latitude, lng: req.body.longitude } : null),
       isVerified: true
     };
 

@@ -51,6 +51,14 @@ const industryAreaEligibilitySchema = new mongoose.Schema({
     default: Date.now,
     required: true 
   },
+  latitude: { 
+    type: Number, 
+    default: null 
+  },
+  longitude: { 
+    type: Number, 
+    default: null 
+  },
   coordinates: {
     lat: { type: Number, default: null },
     lng: { type: Number, default: null }
