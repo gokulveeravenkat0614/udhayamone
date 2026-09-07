@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bot, MessageCircle, Send, Sparkles, X, Loader2 } from 'lucide-react';
-import { assistantApi } from '../services/api';
+import { assistantApi, buildApiUrl } from '../services/api';
 import { getRequirements } from '../data/requirementsData';
 import { SCHEMES_DATA } from '../data/schemesData';
 
@@ -81,14 +81,20 @@ export function AIAssistant({
     if (!open) return;
     let cancelled = false;
 
-    assistantApi.config()
-      .then(cfg => {
-        if (!cancelled && cfg && typeof cfg.aiConfigured === 'boolean') {
-          setAiConfigured(cfg.aiConfigured);
+    assistantApi.health()
+      .then(res => {
+        if (!cancelled && res && typeof res.aiConfigured === 'boolean') {
+          setAiConfigured(res.aiConfigured);
         }
       })
       .catch(() => {
-        // Chat service availability will be verified on send
+        assistantApi.config()
+          .then(cfg => {
+            if (!cancelled && cfg && typeof cfg.aiConfigured === 'boolean') {
+              setAiConfigured(cfg.aiConfigured);
+            }
+          })
+          .catch(() => {});
       });
 
     return () => { cancelled = true; };
@@ -118,6 +124,10 @@ export function AIAssistant({
     const message = String(messageOverride ?? input).trim();
     if (!message || loading) return;
 
+    // Safe debugging logs per MVP specification (never logs secret keys)
+    console.log("AI API URL:", buildApiUrl('/ai/chat'));
+    console.log("AI request started");
+
     const nextMessages = [...messages, { role: 'user', content: message }];
     setMessages(nextMessages);
     setInput('');
@@ -138,22 +148,23 @@ export function AIAssistant({
       ]);
       setAiConfigured(true);
     } catch (err) {
-      if (err.status === 503 || err.response?.data?.code === 'AI_NOT_CONFIGURED') {
+      console.error('AI chat error:', err?.message || err);
+      const status = err.status || err.statusCode || err.response?.status;
+      const code = err.response?.data?.code;
+
+      if (status === 503 || code === 'AI_PROVIDER_CONFIGURATION_MISSING' || code === 'AI_NOT_CONFIGURED') {
         setAiConfigured(false);
         setError('AI assistant is temporarily unavailable. Please try again later.');
-      } else if (err.status === 401) {
-        setError('Please sign in to use UdyamOne AI.');
-      } else if (err.status === 429) {
-        setError('AI service is temporarily busy. Please try again in a moment.');
-      } else if (err.status === 0 || err.name === 'NetworkError') {
-        setError('Unable to connect to application service. Please check your network connection.');
+      } else if (status === 401) {
+        setError('Please log in to use AI assistant.');
+      } else if (status === 429 || code === 'AI_PROVIDER_RATE_LIMITED') {
+        setError('AI service is busy. Please try again in a moment.');
+      } else if (status === 504 || code === 'AI_PROVIDER_TIMEOUT') {
+        setError('AI service request timed out. Please try again.');
+      } else if (err.name === 'NetworkError' || status === 0 || (typeof navigator !== 'undefined' && !navigator.onLine) || String(err.message || '').toLowerCase().includes('network') || String(err.message || '').toLowerCase().includes('failed to fetch')) {
+        setError('Unable to connect to AI service. Please check your connection.');
       } else {
-        const rawMsg = String(err.message || '');
-        if (rawMsg.toLowerCase().includes('.env') || rawMsg.toLowerCase().includes('openai')) {
-          setError('AI assistant is temporarily unavailable. Please try again later.');
-        } else {
-          setError(rawMsg || 'Unable to reach UdyamOne AI.');
-        }
+        setError('AI assistant is temporarily unavailable. Please try again later.');
       }
     } finally {
       setLoading(false);
@@ -180,7 +191,7 @@ export function AIAssistant({
                 <div className="font-bold">UdyamOne AI</div>
                 <div className="text-xs text-blue-100 flex items-center gap-1">
                   <span className={`w-1.5 h-1.5 rounded-full ${aiConfigured === false ? 'bg-amber-300' : 'bg-emerald-300'}`} />
-                  {aiConfigured === false ? 'Service unavailable' : 'AI business assistant'}
+                  {aiConfigured === false ? 'Service unavailable' : 'Service ready'}
                 </div>
               </div>
             </div>

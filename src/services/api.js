@@ -397,13 +397,14 @@ export const applicationApi = {
 
 export const assistantApi = {
   chat: ({ message, sessionId, history, websiteContext }) =>
-    request('/assistant/chat', {
+    request('/ai/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message, sessionId, history, websiteContext })
     }),
-  history: (sessionId) => request(`/assistant/history?sessionId=${encodeURIComponent(sessionId)}`),
-  config: () => request('/assistant/config')
+  health: () => request('/ai/health'),
+  history: (sessionId) => request(`/ai/history?sessionId=${encodeURIComponent(sessionId)}`),
+  config: () => request('/ai/config')
 };
 
 export const industryAreaApi = {

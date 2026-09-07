@@ -1,4 +1,4 @@
-﻿services:
+services:
   - type: web
     name: udyamone-backend
     runtime: node
@@ -15,6 +15,10 @@
         generateValue: true
       - key: AI_SERVICE_URL
         sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
 
   - type: web
     name: udyamone-frontend
@@ -27,4 +31,4 @@
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://udhyayamone.onrender.com
+        value: https://udhayamone.onrender.com

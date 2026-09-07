@@ -46,8 +46,8 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 app.use(express.json());
-app.get('/api/health', (_, res) => res.json({ success: true, service: 'udyamone-backend', aiConfigured: Boolean(process.env.OPENAI_API_KEY) }));
-app.get('/health', (_, res) => res.json({ success: true, service: 'udyamone-backend', aiConfigured: Boolean(process.env.OPENAI_API_KEY) }));
+app.get('/api/health', (_, res) => res.json({ success: true, service: 'udyamone-backend', aiConfigured: Boolean(process.env.OPENAI_API_KEY), providerReachable: Boolean(process.env.OPENAI_API_KEY) }));
+app.get('/health', (_, res) => res.json({ success: true, service: 'udyamone-backend', aiConfigured: Boolean(process.env.OPENAI_API_KEY), providerReachable: Boolean(process.env.OPENAI_API_KEY) }));
 
 // Primary API routes (/api/*)
 app.use('/api/auth', authRoutes);
@@ -57,6 +57,7 @@ app.use('/api/approvals', approvalRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/assistant', assistantRoutes);
+app.use('/api/ai', assistantRoutes);
 app.use('/api/industry-areas', industryAreaRoutes);
 
 // Direct root fallbacks (supports environments where API base URL omits /api)
@@ -67,6 +68,7 @@ app.use('/approvals', approvalRoutes);
 app.use('/documents', documentRoutes);
 app.use('/applications', applicationRoutes);
 app.use('/assistant', assistantRoutes);
+app.use('/ai', assistantRoutes);
 app.use('/industry-areas', industryAreaRoutes);
 
 app.use('/uploads', express.static(uploadsDir));
@@ -86,6 +88,7 @@ if (fs.existsSync(distPath)) {
       !req.path.startsWith('/documents') &&
       !req.path.startsWith('/applications') &&
       !req.path.startsWith('/assistant') &&
+      !req.path.startsWith('/ai') &&
       !req.path.startsWith('/uploads')
     ) {
       return res.sendFile(path.join(distPath, 'index.html'));

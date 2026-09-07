@@ -1,9 +1,12 @@
 const express = require('express');
 const auth = require('../middleware/authMiddleware');
 const optionalAuth = require('../middleware/optionalAuthMiddleware');
-const { chat, history, config } = require('../controllers/assistantController');
+const { chat, history, config, health } = require('../controllers/assistantController');
 
 const router = express.Router();
+
+// AI health check endpoint (returns success, aiConfigured, providerReachable without leaking secrets)
+router.get('/health', health);
 
 // Configuration status (indicates whether OpenAI is configured without leaking secret key)
 router.get('/config', config);

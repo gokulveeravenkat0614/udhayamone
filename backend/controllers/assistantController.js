@@ -8,9 +8,12 @@ const getOpenAIClient = () => {
     return null;
   }
   try {
-    return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    return new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      timeout: 20000
+    });
   } catch (err) {
-    console.error('Failed to initialize OpenAI client:', err.message);
+    console.error('[AI Provider] Failed to initialize OpenAI client:', err.message);
     return null;
   }
 };
@@ -105,6 +108,15 @@ async function getPersonalContext(userId) {
   };
 }
 
+function health(req, res) {
+  const aiConfigured = Boolean(process.env.OPENAI_API_KEY);
+  return res.json({
+    success: true,
+    aiConfigured,
+    providerReachable: aiConfigured
+  });
+}
+
 function config(req, res) {
   return res.json({
     success: true,
@@ -114,27 +126,8 @@ function config(req, res) {
 
 async function chat(req, res) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('OPENAI_API_KEY is not configured');
-      return res.status(503).json({
-        success: false,
-        code: 'AI_NOT_CONFIGURED',
-        message: 'AI assistant is temporarily unavailable.'
-      });
-    }
-
-    const client = getOpenAIClient();
-    if (!client) {
-      console.error('Failed to initialize OpenAI client');
-      return res.status(503).json({
-        success: false,
-        code: 'AI_UNAVAILABLE',
-        message: 'AI assistant is temporarily unavailable.'
-      });
-    }
-
     const message = String(req.body?.message || '').trim();
-    const sessionId = String(req.body?.sessionId || '').trim();
+    const sessionId = String(req.body?.sessionId || '').trim() || 'default-session';
 
     if (!message) {
       return res.status(400).json({ success: false, message: 'Message is required' });
@@ -144,8 +137,23 @@ async function chat(req, res) {
       return res.status(400).json({ success: false, message: 'Message is too long. Keep it under 2000 characters.' });
     }
 
-    if (!sessionId || sessionId.length > 100) {
-      return res.status(400).json({ success: false, message: 'A valid chat session is required' });
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('[AI Provider] AI_PROVIDER_CONFIGURATION_MISSING: OPENAI_API_KEY is not set in environment.');
+      return res.status(503).json({
+        success: false,
+        code: 'AI_PROVIDER_CONFIGURATION_MISSING',
+        message: 'AI assistant is temporarily unavailable. Please try again later.'
+      });
+    }
+
+    const client = getOpenAIClient();
+    if (!client) {
+      console.error('[AI Provider] AI_PROVIDER_CONFIGURATION_MISSING: Failed to initialize OpenAI client.');
+      return res.status(503).json({
+        success: false,
+        code: 'AI_PROVIDER_CONFIGURATION_MISSING',
+        message: 'AI assistant is temporarily unavailable. Please try again later.'
+      });
     }
 
     const history = cleanHistory(req.body?.history);
@@ -163,29 +171,45 @@ ${JSON.stringify(personalContext, null, 2)}
     let reply = '';
     const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
-    if (client.chat && client.chat.completions) {
-      const completion = await client.chat.completions.create({
-        model,
-        messages: [
-          { role: 'system', content: `${SYSTEM_PROMPT}\n\n${contextMessage}` },
-          ...history,
-          { role: 'user', content: message }
-        ],
-        max_tokens: 500
-      });
-      reply = (completion.choices?.[0]?.message?.content || '').trim();
-    } else if (client.responses && client.responses.create) {
-      const response = await client.responses.create({
-        model,
-        input: [
-          { role: 'developer', content: `${SYSTEM_PROMPT}\n\n${contextMessage}` },
-          ...history,
-          { role: 'user', content: message }
-        ],
-        max_output_tokens: 500
-      });
-      reply = (response.output_text || '').trim();
-    }
+    // Race OpenAI call against a 25-second server timeout to prevent hanging connections
+    const aiCall = async () => {
+      if (client.chat && client.chat.completions) {
+        const completion = await client.chat.completions.create({
+          model,
+          messages: [
+            { role: 'system', content: `${SYSTEM_PROMPT}\n\n${contextMessage}` },
+            ...history,
+            { role: 'user', content: message }
+          ],
+          max_tokens: 500
+        });
+        return (completion.choices?.[0]?.message?.content || '').trim();
+      } else if (client.responses && client.responses.create) {
+        const response = await client.responses.create({
+          model,
+          input: [
+            { role: 'developer', content: `${SYSTEM_PROMPT}\n\n${contextMessage}` },
+            ...history,
+            { role: 'user', content: message }
+          ],
+          max_output_tokens: 500
+        });
+        return (response.output_text || '').trim();
+      }
+      return '';
+    };
+
+    const timeoutPromise = new Promise((_, reject) => {
+      const timer = setTimeout(() => {
+        const err = new Error('AI provider request timed out after 25s');
+        err.name = 'TimeoutError';
+        err.code = 'ETIMEDOUT';
+        reject(err);
+      }, 25000);
+      if (timer.unref) timer.unref();
+    });
+
+    reply = await Promise.race([aiCall(), timeoutPromise]);
 
     if (!reply) {
       throw new Error('The AI returned an empty response');
@@ -212,25 +236,41 @@ ${JSON.stringify(personalContext, null, 2)}
       personalized: Boolean(req.user?.id)
     });
   } catch (error) {
-    console.error('UdyamOne AI error:', error.message || error);
+    const errorStatus = error.status || error.statusCode || 500;
+    const errorMessage = error.message || String(error);
 
-    if (error.status === 429 || error.statusCode === 429 || error.code === 'rate_limit_exceeded') {
-      return res.status(429).json({
-        success: false,
-        message: 'AI service is temporarily busy. Please try again.'
-      });
-    }
-
-    if (error.status === 401 || error.statusCode === 401) {
+    if (errorStatus === 401 || errorMessage.includes('401') || errorMessage.toLowerCase().includes('api key')) {
+      console.error('[AI Provider] AI_PROVIDER_AUTH_FAILED: Authentication with OpenAI failed. Check OPENAI_API_KEY validity.', errorMessage);
       return res.status(503).json({
         success: false,
-        message: 'AI service is temporarily unavailable.'
+        code: 'AI_PROVIDER_AUTH_FAILED',
+        message: 'AI assistant is temporarily unavailable. Please try again later.'
       });
     }
 
+    if (errorStatus === 429 || errorMessage.includes('429') || error.code === 'rate_limit_exceeded') {
+      console.error('[AI Provider] AI_PROVIDER_REQUEST_FAILED: Rate limit reached with OpenAI provider.', errorMessage);
+      return res.status(429).json({
+        success: false,
+        code: 'AI_PROVIDER_RATE_LIMITED',
+        message: 'AI service is temporarily busy. Please try again in a moment.'
+      });
+    }
+
+    if (error.code === 'ETIMEDOUT' || error.name === 'TimeoutError' || errorMessage.toLowerCase().includes('timeout')) {
+      console.error('[AI Provider] AI_PROVIDER_REQUEST_FAILED: Request to OpenAI timed out.', errorMessage);
+      return res.status(504).json({
+        success: false,
+        code: 'AI_PROVIDER_TIMEOUT',
+        message: 'AI service request timed out. Please try again.'
+      });
+    }
+
+    console.error('[AI Provider] AI_PROVIDER_REQUEST_FAILED: OpenAI request failed.', errorMessage);
     return res.status(500).json({
       success: false,
-      message: 'AI service is temporarily unavailable.'
+      code: 'AI_PROVIDER_REQUEST_FAILED',
+      message: 'AI service is temporarily unavailable. Please try again later.'
     });
   }
 }
@@ -253,5 +293,5 @@ async function history(req, res) {
   }
 }
 
-module.exports = { chat, history, config };
+module.exports = { chat, history, config, health };
 

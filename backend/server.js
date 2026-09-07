@@ -16,7 +16,7 @@ const port = process.env.PORT || 5000;
     await ensureDemoApplications();
     await ensureIndustryAreaRecords();
     console.log('MongoDB connected and demo users verified.');
-    console.log(`OPENAI_API_KEY configured: ${Boolean(process.env.OPENAI_API_KEY)}`);
+    console.log(`[AI Assistant] OpenAI key configured: ${process.env.OPENAI_API_KEY ? 'YES' : 'NO'}`);
   } catch (err) {
     // All authentication and verification data is MongoDB-backed. Starting
     // without a connection leaves the service up but makes these routes hang

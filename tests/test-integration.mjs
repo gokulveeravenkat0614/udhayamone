@@ -751,6 +751,71 @@ const server = app.listen(5098, async () => {
     });
     assert(deleteRes.statusCode === 200 && deleteRes.data?.success === true, "Admin successfully deletes outdated industrial area record (HTTP 200)");
 
+    // ==========================================
+    // 7. AI ASSISTANT API ENDPOINTS & ERROR CONTRACTS
+    // ==========================================
+    console.log("\n▶ TEST SUITE 7: UdyamOne AI Assistant Endpoints & Taxonomy");
+
+    // 7.1 Health check endpoint on /api/ai/health
+    const aiHealth = await makeJsonRequest({ path: '/api/ai/health' });
+    assert(aiHealth.statusCode === 200, "GET /api/ai/health returns HTTP 200");
+    assert(aiHealth.data?.success === true, "GET /api/ai/health returns success: true");
+    assert(typeof aiHealth.data?.aiConfigured === 'boolean', "GET /api/ai/health reports boolean aiConfigured status");
+    assert(typeof aiHealth.data?.providerReachable === 'boolean', "GET /api/ai/health reports boolean providerReachable status");
+
+    // 7.2 Health check alias on /api/assistant/health
+    const assistantHealth = await makeJsonRequest({ path: '/api/assistant/health' });
+    assert(assistantHealth.statusCode === 200, "GET /api/assistant/health returns HTTP 200");
+    assert(assistantHealth.data?.aiConfigured === aiHealth.data?.aiConfigured, "GET /api/assistant/health matches /api/ai/health");
+
+    // 7.3 Direct fallback endpoint /ai/health
+    const rootAiHealth = await makeJsonRequest({ path: '/ai/health' });
+    assert(rootAiHealth.statusCode === 200, "GET /ai/health fallback returns HTTP 200");
+
+    // 7.4 Input validation: Empty message rejected with HTTP 400
+    const emptyChat = await makeJsonRequest({
+      path: '/api/ai/chat',
+      method: 'POST',
+      body: { message: '   ', sessionId: 'test-session-1' }
+    });
+    assert(emptyChat.statusCode === 400, "POST /api/ai/chat rejects empty/whitespace message with HTTP 400");
+
+    // 7.5 Input validation: Missing message rejected with HTTP 400
+    const noMsgChat = await makeJsonRequest({
+      path: '/api/ai/chat',
+      method: 'POST',
+      body: { sessionId: 'test-session-2' }
+    });
+    assert(noMsgChat.statusCode === 400, "POST /api/ai/chat rejects missing message parameter with HTTP 400");
+
+    // 7.6 Error contract: When OPENAI_API_KEY is not configured in test environment
+    const unconfiguredChat = await makeJsonRequest({
+      path: '/api/ai/chat',
+      method: 'POST',
+      body: { message: 'What should I do next?', sessionId: 'test-session-3' }
+    });
+    if (!process.env.OPENAI_API_KEY) {
+      assert(unconfiguredChat.statusCode === 503, "POST /api/ai/chat returns HTTP 503 when OPENAI_API_KEY is unset");
+      assert(unconfiguredChat.data?.code === 'AI_PROVIDER_CONFIGURATION_MISSING', "POST /api/ai/chat returns AI_PROVIDER_CONFIGURATION_MISSING code");
+      assert(!JSON.stringify(unconfiguredChat.data).includes('sk-'), "POST /api/ai/chat response never exposes secret API keys");
+    }
+
+    // 7.7 Route alias: /api/assistant/chat parity
+    const assistantAliasChat = await makeJsonRequest({
+      path: '/api/assistant/chat',
+      method: 'POST',
+      body: { message: 'What should I do next?', sessionId: 'test-session-4' }
+    });
+    if (!process.env.OPENAI_API_KEY) {
+      assert(assistantAliasChat.statusCode === 503, "POST /api/assistant/chat returns HTTP 503 when unconfigured");
+      assert(assistantAliasChat.data?.code === 'AI_PROVIDER_CONFIGURATION_MISSING', "POST /api/assistant/chat returns AI_PROVIDER_CONFIGURATION_MISSING");
+    }
+
+    // 7.8 Config endpoint backwards compatibility
+    const aiConfig = await makeJsonRequest({ path: '/api/ai/config' });
+    assert(aiConfig.statusCode === 200, "GET /api/ai/config returns HTTP 200");
+    assert(typeof aiConfig.data?.aiConfigured === 'boolean', "GET /api/ai/config returns aiConfigured boolean");
+
     server.close(() => {
       console.log("\n=======================================================");
       console.log(`🏁 INTEGRATION RESULTS: ${passed} PASSED, ${failed} FAILED`);
