@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Bot, MessageCircle, Send, Sparkles, X, Loader2 } from 'lucide-react';
+import { Bot, MessageCircle, Send, Sparkles, X, Loader2, RotateCcw } from 'lucide-react';
 import { assistantApi, buildApiUrl } from '../services/api';
 import { getRequirements } from '../data/requirementsData';
 import { SCHEMES_DATA } from '../data/schemesData';
@@ -16,12 +16,87 @@ function getSessionId() {
   return id;
 }
 
+const INITIAL_MESSAGE = {
+  role: 'assistant',
+  content: "Hi! I’m UdyamOne AI. I can answer any question about starting a business, licenses, Udyam registration, pollution categories, taxes, government schemes, and more. How can I help you today?"
+};
+
 const starterQuestions = [
-  'What documents do I need for my business?',
-  'What is my identity verification status?',
-  'Which government schemes may help my business?',
-  'What should I do next?'
+  'What is Udyam registration?',
+  'What documents do I need?',
+  'What is GST?',
+  'Explain pollution categories',
+  'Which government schemes can help me?',
+  'What should I do first?'
 ];
+
+function formatInline(text) {
+  if (typeof text !== 'string') return text;
+  const parts = [];
+  const regex = /\*\*(.*?)\*\*/g;
+  let lastIndex = 0;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    parts.push(<strong key={match.index} className="font-semibold text-inherit">{match[1]}</strong>);
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+  return parts.length > 0 ? parts : text;
+}
+
+function FormattedMessage({ content, isUser }) {
+  if (isUser) {
+    return <span>{content}</span>;
+  }
+
+  const lines = String(content || '').split('\n');
+  return (
+    <div className="space-y-1.5 text-sm leading-relaxed">
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          return <div key={idx} className="h-1" />;
+        }
+        if (/^[-*•]\s+/.test(trimmed)) {
+          const itemText = trimmed.replace(/^[-*•]\s+/, '');
+          return (
+            <div key={idx} className="flex items-start gap-2 pl-1">
+              <span className="text-brand-600 font-bold select-none">•</span>
+              <span className="flex-1">{formatInline(itemText)}</span>
+            </div>
+          );
+        }
+        const numMatch = trimmed.match(/^(\d+)[.)]\s+(.*)$/);
+        if (numMatch) {
+          return (
+            <div key={idx} className="flex items-start gap-2 pl-1">
+              <span className="font-semibold text-brand-700 min-w-[1.2rem] select-none">{numMatch[1]}.</span>
+              <span className="flex-1">{formatInline(numMatch[2])}</span>
+            </div>
+          );
+        }
+        if (/^#{1,4}\s+/.test(trimmed)) {
+          const headerText = trimmed.replace(/^#{1,4}\s+/, '');
+          return (
+            <div key={idx} className="font-bold text-slate-900 pt-1 text-sm">
+              {formatInline(headerText)}
+            </div>
+          );
+        }
+        return (
+          <p key={idx} className="text-slate-800">
+            {formatInline(line)}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
 
 export function AIAssistant({
   currentUser,
@@ -31,17 +106,24 @@ export function AIAssistant({
 }) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: 'Hi! I’m UdyamOne AI. I can help with business approvals, documents, schemes, compliance, and your identity-verification status.'
-    }
-  ]);
+  const [messages, setMessages] = useState([INITIAL_MESSAGE]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [lastFailedMessage, setLastFailedMessage] = useState(null);
   const [aiConfigured, setAiConfigured] = useState(null);
   const bottomRef = useRef(null);
-  const sessionId = useMemo(() => getSessionId(), []);
+  const [sessionId, setSessionId] = useState(() => getSessionId());
+
+  function handleNewConversation() {
+    const newId = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `session-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem('udyamone_ai_session_id', newId);
+    setSessionId(newId);
+    setMessages([INITIAL_MESSAGE]);
+    setError('');
+    setLastFailedMessage(null);
+  }
 
   const websiteContext = useMemo(() => {
     const requirementData = getRequirements(
@@ -132,6 +214,7 @@ export function AIAssistant({
     setMessages(nextMessages);
     setInput('');
     setError('');
+    setLastFailedMessage(null);
     setLoading(true);
 
     try {
@@ -142,30 +225,25 @@ export function AIAssistant({
         websiteContext
       });
 
-      setMessages(prev => [
-        ...prev,
-        { role: 'assistant', content: data.reply }
-      ]);
-      setAiConfigured(true);
+      if (data && typeof data.reply === 'string' && data.reply.trim().length > 0) {
+        setMessages(prev => [
+          ...prev,
+          { role: 'assistant', content: data.reply }
+        ]);
+        setAiConfigured(true);
+      } else {
+        throw new Error('AI returned an empty response');
+      }
     } catch (err) {
       console.error('AI chat error:', err?.message || err);
+      setLastFailedMessage(message);
       const status = err.status || err.statusCode || err.response?.status;
       const code = err.response?.data?.code;
 
       if (status === 503 || code === 'AI_PROVIDER_CONFIGURATION_MISSING' || code === 'AI_NOT_CONFIGURED') {
         setAiConfigured(false);
-        setError('AI assistant is temporarily unavailable. Please try again later.');
-      } else if (status === 401) {
-        setError('Please log in to use AI assistant.');
-      } else if (status === 429 || code === 'AI_PROVIDER_RATE_LIMITED') {
-        setError('AI service is busy. Please try again in a moment.');
-      } else if (status === 504 || code === 'AI_PROVIDER_TIMEOUT') {
-        setError('AI service request timed out. Please try again.');
-      } else if (err.name === 'NetworkError' || status === 0 || (typeof navigator !== 'undefined' && !navigator.onLine) || String(err.message || '').toLowerCase().includes('network') || String(err.message || '').toLowerCase().includes('failed to fetch')) {
-        setError('Unable to connect to AI service. Please check your connection.');
-      } else {
-        setError('AI assistant is temporarily unavailable. Please try again later.');
       }
+      setError("Sorry, I couldn't process that right now. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -195,14 +273,26 @@ export function AIAssistant({
                 </div>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="p-2 rounded-xl hover:bg-white/10"
-              aria-label="Close UdyamOne AI"
-            >
-              <X size={20} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleNewConversation}
+                className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/90 hover:text-white transition flex items-center gap-1.5 text-xs font-medium border border-white/15"
+                title="Start new conversation"
+                aria-label="Start new conversation"
+              >
+                <RotateCcw size={13} />
+                <span className="hidden sm:inline">New Chat</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="p-2 rounded-xl hover:bg-white/10"
+                aria-label="Close UdyamOne AI"
+              >
+                <X size={20} />
+              </button>
+            </div>
           </div>
 
           <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 text-xs text-slate-600">
@@ -217,28 +307,39 @@ export function AIAssistant({
                 key={`${message.role}-${index}`}
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap leading-6 ${
+                <div className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm ${
                   message.role === 'user'
-                    ? 'bg-brand-600 text-white rounded-br-md'
+                    ? 'bg-brand-600 text-white rounded-br-md whitespace-pre-wrap'
                     : 'bg-slate-100 text-slate-800 rounded-bl-md'
                 }`}>
-                  {message.content}
+                  <FormattedMessage content={message.content} isUser={message.role === 'user'} />
                 </div>
               </div>
             ))}
 
             {loading && (
               <div className="flex justify-start">
-                <div className="rounded-2xl rounded-bl-md bg-slate-100 px-4 py-3 text-slate-500 flex items-center gap-2 text-sm">
-                  <Loader2 size={16} className="animate-spin" />
-                  Thinking...
+                <div className="rounded-2xl rounded-bl-md bg-slate-100 px-4 py-3 text-slate-600 flex items-center gap-2 text-sm shadow-sm">
+                  <Loader2 size={16} className="animate-spin text-brand-600" />
+                  <span>UdyamOne AI is thinking...</span>
                 </div>
               </div>
             )}
 
             {error && (
-              <div className="rounded-2xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
-                {error}
+              <div className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm">
+                <span>{error}</span>
+                {lastFailedMessage && (
+                  <button
+                    type="button"
+                    onClick={() => sendMessage(lastFailedMessage)}
+                    disabled={loading}
+                    className="inline-flex items-center gap-1.5 self-start sm:self-auto px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-xs transition shadow-sm"
+                  >
+                    <RotateCcw size={12} />
+                    Retry
+                  </button>
+                )}
               </div>
             )}
 

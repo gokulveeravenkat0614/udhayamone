@@ -788,7 +788,15 @@ const server = app.listen(5098, async () => {
     });
     assert(noMsgChat.statusCode === 400, "POST /api/ai/chat rejects missing message parameter with HTTP 400");
 
-    // 7.6 Error contract: When OPENAI_API_KEY is not configured in test environment
+    // 7.6 Input validation: Overlong message (> 2000 chars) rejected with HTTP 400
+    const overlongChat = await makeJsonRequest({
+      path: '/api/ai/chat',
+      method: 'POST',
+      body: { message: 'A'.repeat(2005), sessionId: 'test-session-overlong' }
+    });
+    assert(overlongChat.statusCode === 400, "POST /api/ai/chat rejects message over 2000 characters with HTTP 400");
+
+    // 7.7 Error contract: When OPENAI_API_KEY is not configured in test environment
     const unconfiguredChat = await makeJsonRequest({
       path: '/api/ai/chat',
       method: 'POST',
@@ -800,7 +808,7 @@ const server = app.listen(5098, async () => {
       assert(!JSON.stringify(unconfiguredChat.data).includes('sk-'), "POST /api/ai/chat response never exposes secret API keys");
     }
 
-    // 7.7 Route alias: /api/assistant/chat parity
+    // 7.8 Route alias: /api/assistant/chat parity
     const assistantAliasChat = await makeJsonRequest({
       path: '/api/assistant/chat',
       method: 'POST',
@@ -811,10 +819,21 @@ const server = app.listen(5098, async () => {
       assert(assistantAliasChat.data?.code === 'AI_PROVIDER_CONFIGURATION_MISSING', "POST /api/assistant/chat returns AI_PROVIDER_CONFIGURATION_MISSING");
     }
 
-    // 7.8 Config endpoint backwards compatibility
+    // 7.9 Config endpoint backwards compatibility
     const aiConfig = await makeJsonRequest({ path: '/api/ai/config' });
     assert(aiConfig.statusCode === 200, "GET /api/ai/config returns HTTP 200");
     assert(typeof aiConfig.data?.aiConfigured === 'boolean', "GET /api/ai/config returns aiConfigured boolean");
+
+    // 7.10 Chat history requires authentication
+    const unauthedHistory = await makeJsonRequest({ path: '/api/ai/history?sessionId=test-session-1' });
+    assert(unauthedHistory.statusCode === 401, "GET /api/ai/history rejects unauthenticated requests (HTTP 401)");
+
+    // 7.11 Chat history returns records for authenticated client
+    const authedAiHistory = await makeJsonRequest({
+      path: '/api/ai/history?sessionId=test-session-1',
+      headers: { Authorization: `Bearer ${demoToken}` }
+    });
+    assert(authedAiHistory.statusCode === 200 && Array.isArray(authedAiHistory.data?.messages), "GET /api/ai/history returns message array for authenticated client");
 
     // 7.9 Industry Areas root fallback API access with query param
     const rootAreasRes = await makeJsonRequest({ path: '/industry-areas?state=Maharashtra' });
