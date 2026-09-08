@@ -16,7 +16,11 @@ const port = process.env.PORT || 5000;
     await ensureDemoApplications();
     await ensureIndustryAreaRecords();
     console.log('MongoDB connected and demo users verified.');
-    console.log(`[AI Assistant] OpenAI key configured: ${process.env.OPENAI_API_KEY ? 'YES' : 'NO'}`);
+    const configuredProviders = [];
+    if (process.env.OPENAI_API_KEY) configuredProviders.push('OpenAI');
+    if (process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY) configuredProviders.push('Google Gemini');
+    if (process.env.GROQ_API_KEY) configuredProviders.push('Groq');
+    console.log(`[AI Assistant] Configured AI providers: ${configuredProviders.length > 0 ? configuredProviders.join(', ') : 'NONE'}`);
   } catch (err) {
     // All authentication and verification data is MongoDB-backed. Starting
     // without a connection leaves the service up but makes these routes hang

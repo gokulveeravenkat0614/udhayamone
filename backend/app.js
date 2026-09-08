@@ -46,8 +46,14 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 app.use(express.json());
-app.get('/api/health', (_, res) => res.json({ success: true, service: 'udyamone-backend', aiConfigured: Boolean(process.env.OPENAI_API_KEY), providerReachable: Boolean(process.env.OPENAI_API_KEY) }));
-app.get('/health', (_, res) => res.json({ success: true, service: 'udyamone-backend', aiConfigured: Boolean(process.env.OPENAI_API_KEY), providerReachable: Boolean(process.env.OPENAI_API_KEY) }));
+const isAiConfigured = () => Boolean(
+  (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim()) ||
+  (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim()) ||
+  (process.env.GOOGLE_AI_API_KEY && process.env.GOOGLE_AI_API_KEY.trim()) ||
+  (process.env.GROQ_API_KEY && process.env.GROQ_API_KEY.trim())
+);
+app.get('/api/health', (_, res) => res.json({ success: true, service: 'udyamone-backend', aiConfigured: isAiConfigured(), providerReachable: isAiConfigured() }));
+app.get('/health', (_, res) => res.json({ success: true, service: 'udyamone-backend', aiConfigured: isAiConfigured(), providerReachable: isAiConfigured() }));
 
 // Primary API routes (/api/*)
 app.use('/api/auth', authRoutes);
