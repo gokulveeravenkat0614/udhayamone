@@ -50,6 +50,7 @@ export const Navbar = ({
       case 'dashboard': return t('nav.dashboard', fallback);
       case 'my-applications': return t('nav.myApplications', fallback);
       case 'verification': return t('nav.verifyIdentity', fallback);
+      case 'funding': return 'FundMatch';
       default: return fallback;
     }
   };
@@ -70,6 +71,7 @@ export const Navbar = ({
   // Navigation Links based on login state
   const unauthLinks = [
     { id: 'home', path: '/', label: 'Home' },
+    { id: 'funding', path: '/funding', label: 'FundMatch' },
     { id: 'industry-areas', path: '/industry-areas', label: 'Industry Areas' },
     { id: 'wizard', path: '/wizard', label: 'Requirements' },
     { id: 'compliance', path: '/compliance', label: 'Compliance' },
@@ -81,6 +83,7 @@ export const Navbar = ({
     { id: 'dashboard', path: '/dashboard', label: 'Dashboard' },
     { id: 'my-applications', path: '/my-applications', label: 'My Applications' },
     { id: 'verification', path: '/verify', label: 'Verify Identity' },
+    { id: 'funding', path: '/funding', label: 'FundMatch' },
     { id: 'industry-areas', path: '/industry-areas', label: 'Industry Areas' },
     { id: 'wizard', path: '/wizard', label: 'Requirements' },
     { id: 'compliance', path: '/compliance', label: 'Compliance' },

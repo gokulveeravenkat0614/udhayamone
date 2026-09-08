@@ -13,6 +13,7 @@ import { Footer } from './components/Footer';
 import { VerificationPage } from './pages/VerificationPage';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { IndustryAreaEligibilityPage } from './pages/IndustryAreaEligibilityPage';
+import { FundingFinder } from './components/FundingFinder';
 
 // Client Account Workspace Pages
 import { LoginPage } from './pages/LoginPage';
@@ -60,6 +61,7 @@ function parseRoute(pathname) {
   if (clean === '/officer') return { name: 'officer', path: '/officer' };
   if (clean === '/compliance') return { name: 'compliance', path: '/compliance' };
   if (clean === '/schemes') return { name: 'schemes', path: '/schemes' };
+  if (clean === '/funding' || clean === '/fundmatch') return { name: 'funding', path: '/funding' };
   if (clean === '/industry-areas') return { name: 'industry-areas', path: '/industry-areas' };
   if (clean === '/wizard' || clean === '/application/new') return { name: 'wizard', path: '/wizard' };
   if (clean === '/help') return { name: 'help', path: '/help' };
@@ -541,6 +543,13 @@ export default function App() {
           </div>
         )}
 
+        {/* 9.5. FUNDMATCH VIEW */}
+        {currentRoute.name === 'funding' && (
+          <div className="py-4">
+            <FundingFinder />
+          </div>
+        )}
+
         {/* 10. INDUSTRY AREA ELIGIBILITY */}
         {currentRoute.name === 'industry-areas' && (
           <div className="py-4">
@@ -630,6 +639,7 @@ export default function App() {
 
             {!viewingPage2 && (
               <div className="space-y-16 pb-16">
+                <FundingFinder />
                 <ComplianceSection />
                 <SchemesSection selectedIndustry={selectedIndustry} selectedState={selectedState} />
               </div>
