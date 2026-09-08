@@ -274,6 +274,16 @@ async function chat(req, res) {
     const history = cleanHistory(req.body?.history);
     const websiteContext = await buildWebsiteContext(req.body);
     const personalContext = await getPersonalContext(req.user?.id);
+    const language = String(req.body?.language || 'en').toLowerCase();
+
+    let languageInstruction = '';
+    if (language === 'te') {
+      languageInstruction = '\n\nLANGUAGE PREFERENCE (TELUGU):\nThe user interface is in Telugu (తెలుగు). Please reply primarily in natural, professional Telugu (తెలుగు script). You can keep official portal URLs, acts, or specific business acronyms in English if standard, but explain them in Telugu.';
+    } else if (language === 'hi') {
+      languageInstruction = '\n\nLANGUAGE PREFERENCE (HINDI):\nThe user interface is in Hindi (हिन्दी). Please reply primarily in natural, professional Hindi (हिन्दी / Devanagari script). You can keep official portal URLs, acts, or specific business acronyms in English if standard, but explain them in Hindi.';
+    } else {
+      languageInstruction = '\n\nLANGUAGE PREFERENCE:\nReply in English by default. If the user addresses you in Telugu, Hindi, or any other regional language, converse fluently in that language.';
+    }
 
     const contextMessage = `
 UdyamOne website context (verified statutory and regulatory reference data):
@@ -298,7 +308,7 @@ ${JSON.stringify(personalContext, null, 2)}
             const completion = await client.chat.completions.create({
               model: m,
               messages: [
-                { role: 'system', content: `${SYSTEM_PROMPT}\n\n${contextMessage}` },
+                { role: 'system', content: `${SYSTEM_PROMPT}${languageInstruction}\n\n${contextMessage}` },
                 ...history,
                 { role: 'user', content: message }
               ],

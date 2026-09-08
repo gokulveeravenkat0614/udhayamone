@@ -26,6 +26,7 @@ import { ApprovalCard } from '../components/ApprovalCard';
 import { ApprovalDetailModal } from '../components/ApprovalDetailModal';
 import { DependencyGraph } from '../components/DependencyGraph';
 import { NextStepsTimeline } from '../components/NextStepsTimeline';
+import { useTranslation } from '../i18n/LanguageContext';
 
 export const ApplicationWorkspacePage = ({ 
   applicationId, 
@@ -33,6 +34,7 @@ export const ApplicationWorkspacePage = ({
   onNavigate,
   onToast 
 }) => {
+  const { t } = useTranslation();
   const [appData, setAppData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -152,8 +154,8 @@ export const ApplicationWorkspacePage = ({
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 text-center">
         <RefreshCw className="w-10 h-10 text-brand-600 animate-spin mx-auto mb-4" />
-        <h2 className="text-lg font-bold text-slate-800">Loading application...</h2>
-        <p className="text-xs text-slate-500 mt-1">Verifying ownership and fetching statutory records from database</p>
+        <h2 className="text-lg font-bold text-slate-800">{t('appWorkspace.loading', 'Loading application...')}</h2>
+        <p className="text-xs text-slate-500 mt-1">{t('appWorkspace.loadingDesc', 'Verifying ownership and fetching statutory records from database')}</p>
       </div>
     );
   }
@@ -164,12 +166,12 @@ export const ApplicationWorkspacePage = ({
         <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
           <AlertCircle className="w-7 h-7" />
         </div>
-        <h2 className="text-xl font-bold text-slate-900">{error || 'Application not found.'}</h2>
+        <h2 className="text-xl font-bold text-slate-900">{error || t('appWorkspace.notFound', 'Application not found.')}</h2>
 
         {errorType === 'network' && (
           <>
             <p className="text-xs text-slate-600">
-              Unable to reach the application service. Please check your connection and try again.
+              {t('appWorkspace.networkError', 'Unable to reach the application service. Please check your connection and try again.')}
             </p>
             <div className="flex items-center justify-center space-x-3 pt-2">
               <button
@@ -177,14 +179,14 @@ export const ApplicationWorkspacePage = ({
                 className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-brand-700 text-white text-xs font-bold hover:bg-brand-800 transition-colors cursor-pointer"
               >
                 <RefreshCw className="w-4 h-4" />
-                <span>Retry</span>
+                <span>{t('appWorkspace.retry', 'Retry')}</span>
               </button>
               <button
                 onClick={() => onNavigate('/my-applications')}
                 className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span>My Applications</span>
+                <span>{t('myApps.title', 'My Applications')}</span>
               </button>
             </div>
           </>
@@ -193,14 +195,14 @@ export const ApplicationWorkspacePage = ({
         {errorType === 'auth' && (
           <>
             <p className="text-xs text-slate-600">
-              Your authentication session has expired. Please log in again to access this application.
+              {t('appWorkspace.authError', 'Your authentication session has expired. Please log in again to access this application.')}
             </p>
             <div className="pt-2">
               <button
                 onClick={() => onNavigate('/login')}
                 className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-brand-700 text-white text-xs font-bold hover:bg-brand-800 transition-colors cursor-pointer"
               >
-                <span>Log In</span>
+                <span>{t('appWorkspace.login', 'Log In')}</span>
               </button>
             </div>
           </>
@@ -209,7 +211,7 @@ export const ApplicationWorkspacePage = ({
         {(errorType === 'not_found' || (!errorType && !appData)) && (
           <>
             <p className="text-xs text-slate-600">
-              The application with ID "{applicationId}" does not exist in the database or does not belong to your account.
+              {t('appWorkspace.notFoundDesc', 'The application with ID "{id}" does not exist in the database or does not belong to your account.', { id: applicationId })}
             </p>
             <div className="pt-2">
               <button
@@ -217,7 +219,7 @@ export const ApplicationWorkspacePage = ({
                 className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-brand-700 text-white text-xs font-bold hover:bg-brand-800 transition-colors cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span>Return to My Applications</span>
+                <span>{t('appWorkspace.returnToMyApps', 'Return to My Applications')}</span>
               </button>
             </div>
           </>
@@ -250,13 +252,13 @@ export const ApplicationWorkspacePage = ({
   const isSubmitted = status === 'Submitted';
 
   const workspaceTabs = [
-    { id: 'approvals', label: 'Required Approvals', count: approvals.length },
-    { id: 'sequence', label: 'Approval Sequence' },
-    { id: 'graph', label: 'Dependency Graph' },
-    { id: 'documents', label: 'Required Documents', count: `${approvedDocsCount}/${documents.length}` },
-    { id: 'profile', label: 'Business Profile' },
-    { id: 'progress', label: 'Application Progress' },
-    { id: 'timeline', label: 'Audit Timeline', count: timeline.length }
+    { id: 'approvals', label: t('appWorkspace.tabApprovals', 'Required Approvals'), count: approvals.length },
+    { id: 'sequence', label: t('appWorkspace.tabSequence', 'Approval Sequence') },
+    { id: 'graph', label: t('appWorkspace.tabGraph', 'Dependency Graph') },
+    { id: 'documents', label: t('appWorkspace.tabDocs', 'Required Documents'), count: `${approvedDocsCount}/${documents.length}` },
+    { id: 'profile', label: t('appWorkspace.tabProfile', 'Business Profile') },
+    { id: 'progress', label: t('appWorkspace.tabProgress', 'Application Progress') },
+    { id: 'timeline', label: t('appWorkspace.tabTimeline', 'Audit Timeline'), count: timeline.length }
   ];
 
   return (
@@ -273,7 +275,7 @@ export const ApplicationWorkspacePage = ({
               className="inline-flex items-center space-x-1 text-xs font-bold text-slate-500 hover:text-brand-700 transition-colors cursor-pointer group mb-1"
             >
               <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
-              <span>Back to My Applications</span>
+              <span>{t('appWorkspace.back', 'Back to My Applications')}</span>
             </button>
             <div className="flex flex-wrap items-center gap-2.5">
               <span className="font-mono text-sm font-black px-3 py-1 rounded-xl bg-brand-50 text-brand-800 border border-brand-200">
@@ -286,21 +288,21 @@ export const ApplicationWorkspacePage = ({
                   ? 'bg-blue-100 text-blue-800 border border-blue-200'
                   : 'bg-amber-100 text-amber-800 border border-amber-200'
               }`}>
-                {status}
+                {isCompleted ? t('common.completed', 'Completed') : isSubmitted ? t('common.submitted', 'Submitted') : t('common.inProgress', 'In Progress')}
               </span>
               {certificateNumber && (
                 <span className="px-2.5 py-0.5 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 font-mono">
-                  Cert: {certificateNumber}
+                  {t('appWorkspace.cert', 'Cert:')} {certificateNumber}
                 </span>
               )}
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-900">
-              {applicantName} • {industry}
+              {applicantName} • {t('industries.' + industry, industry)}
             </h1>
             <div className="flex items-center text-xs text-slate-500 space-x-3">
               <span className="flex items-center">
                 <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400" />
-                {district}, {state}
+                {district}, {t('states.' + state, state)}
               </span>
               <span>•</span>
               <span>{msmeClassification ? `${msmeClassification.enterpriseType} Enterprise` : 'MSME'}</span>
@@ -317,7 +319,7 @@ export const ApplicationWorkspacePage = ({
               className="px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
             >
               <Save className="w-3.5 h-3.5 text-slate-500" />
-              <span>{saving ? 'Saving...' : 'Save & Continue Later'}</span>
+              <span>{saving ? t('appWorkspace.saving', 'Saving...') : t('appWorkspace.saveContinueLater', 'Save & Continue Later')}</span>
             </button>
 
             {!isCompleted && !isSubmitted && (
@@ -327,7 +329,7 @@ export const ApplicationWorkspacePage = ({
                 className="px-5 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-800 active:scale-95 text-white text-xs font-black shadow-md shadow-brand-700/20 transition-all flex items-center space-x-2 cursor-pointer disabled:opacity-50"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>{submitting ? 'Submitting...' : 'Submit Application'}</span>
+                <span>{submitting ? t('appWorkspace.submitting', 'Submitting...') : t('appWorkspace.submitApplication', 'Submit Application')}</span>
               </button>
             )}
           </div>
@@ -336,7 +338,7 @@ export const ApplicationWorkspacePage = ({
         {/* Progress Bar */}
         <div className="space-y-1.5 pt-2 border-t border-slate-100">
           <div className="flex justify-between text-xs font-semibold">
-            <span className="text-slate-600">Application Completion Progress</span>
+            <span className="text-slate-600">{t('appWorkspace.completionProgress', 'Application Completion Progress')}</span>
             <span className="text-brand-700 font-bold">{progressPercentage}%</span>
           </div>
           <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
@@ -385,14 +387,14 @@ export const ApplicationWorkspacePage = ({
               <div>
                 <h2 className="text-xl font-black text-slate-900 flex items-center space-x-2">
                   <ShieldCheck className="w-5 h-5 text-brand-700" />
-                  <span>Required Government Approvals, Licenses & NOCs</span>
+                  <span>{t('appWorkspace.approvalsTitle', 'Required Government Approvals, Licenses & NOCs')}</span>
                 </h2>
                 <p className="text-xs text-slate-500 mt-1">
-                  Mandatory and conditional clearances determined for your specific business profile
+                  {t('appWorkspace.approvalsSubtitle', 'Mandatory and conditional clearances determined for your specific business profile')}
                 </p>
               </div>
               <div className="text-xs text-slate-500 bg-blue-50 border border-blue-200 rounded-xl px-3 py-1.5 font-medium">
-                Total statutory clearances: <strong className="text-brand-800">{approvals.length}</strong>
+                {t('appWorkspace.totalClearances', 'Total statutory clearances:')} <strong className="text-brand-800">{approvals.length}</strong>
               </div>
             </div>
 
@@ -411,9 +413,9 @@ export const ApplicationWorkspacePage = ({
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
-                <h4 className="text-sm font-bold text-slate-900">Application found.</h4>
-                <p className="text-xs font-semibold text-slate-600">0 requirements available.</p>
-                <p className="text-[11px] text-slate-400">No statutory clearances required for the selected operational parameters.</p>
+                <h4 className="text-sm font-bold text-slate-900">{t('appWorkspace.appFound', 'Application found.')}</h4>
+                <p className="text-xs font-semibold text-slate-600">{t('appWorkspace.zeroRequirements', '0 requirements available.')}</p>
+                <p className="text-[11px] text-slate-400">{t('appWorkspace.noClearances', 'No statutory clearances required for the selected operational parameters.')}</p>
               </div>
             )}
           </div>
@@ -426,10 +428,10 @@ export const ApplicationWorkspacePage = ({
           <div>
             <h2 className="text-xl font-black text-slate-900 flex items-center space-x-2">
               <Clock className="w-5 h-5 text-brand-700" />
-              <span>Approval Sequence & Phased Timeline</span>
+              <span>{t('appWorkspace.sequenceTitle', 'Approval Sequence & Phased Timeline')}</span>
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Statutory timeline organized by chronological operational milestones
+              {t('appWorkspace.sequenceSubtitle', 'Statutory timeline organized by chronological operational milestones')}
             </p>
           </div>
           <NextStepsTimeline nextSteps={approvalSequence} />
@@ -442,10 +444,10 @@ export const ApplicationWorkspacePage = ({
           <div>
             <h2 className="text-xl font-black text-slate-900 flex items-center space-x-2">
               <GitBranch className="w-5 h-5 text-brand-700" />
-              <span>Clearance Dependency Graph (DAG)</span>
+              <span>{t('appWorkspace.graphTitle', 'Clearance Dependency Graph (DAG)')}</span>
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Visualizes prerequisite dependencies and approvals that can be executed in parallel
+              {t('appWorkspace.graphSubtitle', 'Visualizes prerequisite dependencies and approvals that can be executed in parallel')}
             </p>
           </div>
           <DependencyGraph 
@@ -474,61 +476,61 @@ export const ApplicationWorkspacePage = ({
           <div>
             <h2 className="text-xl font-black text-slate-900 flex items-center space-x-2">
               <Building2 className="w-5 h-5 text-brand-700" />
-              <span>Business Profile & Operational Parameters</span>
+              <span>{t('appWorkspace.profileTitle', 'Business Profile & Operational Parameters')}</span>
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Configured parameters used by the statutory rule engine to calculate approvals and exemptions
+              {t('appWorkspace.profileSubtitle', 'Configured parameters used by the statutory rule engine to calculate approvals and exemptions')}
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-              <div className="text-[11px] font-bold text-slate-400 uppercase">State & District</div>
-              <div className="text-sm font-black text-slate-800 mt-1">{district}, {state}</div>
+              <div className="text-[11px] font-bold text-slate-400 uppercase">{t('appWorkspace.stateDistrict', 'State & District')}</div>
+              <div className="text-sm font-black text-slate-800 mt-1">{district}, {t('states.' + state, state)}</div>
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-              <div className="text-[11px] font-bold text-slate-400 uppercase">Industry Sector</div>
-              <div className="text-sm font-black text-slate-800 mt-1">{industry}</div>
+              <div className="text-[11px] font-bold text-slate-400 uppercase">{t('appWorkspace.industrySector', 'Industry Sector')}</div>
+              <div className="text-sm font-black text-slate-800 mt-1">{t('industries.' + industry, industry)}</div>
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-              <div className="text-[11px] font-bold text-slate-400 uppercase">Constitution / Entity</div>
+              <div className="text-[11px] font-bold text-slate-400 uppercase">{t('appWorkspace.constitution', 'Constitution / Entity')}</div>
               <div className="text-sm font-black text-slate-800 mt-1">{businessProfile.entityType || 'Private Limited'}</div>
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-              <div className="text-[11px] font-bold text-slate-400 uppercase">Plant & Machinery Investment</div>
-              <div className="text-sm font-black text-slate-800 mt-1">₹{businessProfile.investment || 2.5} Crore</div>
+              <div className="text-[11px] font-bold text-slate-400 uppercase">{t('appWorkspace.investment', 'Plant & Machinery Investment')}</div>
+              <div className="text-sm font-black text-slate-800 mt-1">₹{businessProfile.investment || 2.5} {t('appWorkspace.crore', 'Crore')}</div>
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-              <div className="text-[11px] font-bold text-slate-400 uppercase">Annual Turnover</div>
-              <div className="text-sm font-black text-slate-800 mt-1">₹{businessProfile.turnover || 12.0} Crore</div>
+              <div className="text-[11px] font-bold text-slate-400 uppercase">{t('appWorkspace.turnover', 'Annual Turnover')}</div>
+              <div className="text-sm font-black text-slate-800 mt-1">₹{businessProfile.turnover || 12.0} {t('appWorkspace.crore', 'Crore')}</div>
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-              <div className="text-[11px] font-bold text-slate-400 uppercase">Expected Workforce</div>
-              <div className="text-sm font-black text-slate-800 mt-1">{businessProfile.employeeCount || 25} Employees</div>
+              <div className="text-[11px] font-bold text-slate-400 uppercase">{t('appWorkspace.workforce', 'Expected Workforce')}</div>
+              <div className="text-sm font-black text-slate-800 mt-1">{businessProfile.employeeCount || 25} {t('appWorkspace.employees', 'Employees')}</div>
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-              <div className="text-[11px] font-bold text-slate-400 uppercase">Contract Power Load</div>
+              <div className="text-[11px] font-bold text-slate-400 uppercase">{t('appWorkspace.powerLoad', 'Contract Power Load')}</div>
               <div className="text-sm font-black text-slate-800 mt-1">{businessProfile.powerRequired || 75} kW</div>
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-              <div className="text-[11px] font-bold text-slate-400 uppercase">Built-up Industrial Area</div>
+              <div className="text-[11px] font-bold text-slate-400 uppercase">{t('appWorkspace.builtUpArea', 'Built-up Industrial Area')}</div>
               <div className="text-sm font-black text-slate-800 mt-1">{businessProfile.builtUpArea || 1500} sq.m</div>
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-              <div className="text-[11px] font-bold text-slate-400 uppercase">Hazardous Chemicals</div>
+              <div className="text-[11px] font-bold text-slate-400 uppercase">{t('appWorkspace.hazardousChemicals', 'Hazardous Chemicals')}</div>
               <div className="text-sm font-black text-slate-800 mt-1">
                 {businessProfile.usesHazardousChemicals ? (
-                  <span className="text-red-600 font-bold">Yes (PESO Applicable)</span>
+                  <span className="text-red-600 font-bold">{t('appWorkspace.pesoApplicable', 'Yes (PESO Applicable)')}</span>
                 ) : (
-                  <span className="text-emerald-700 font-bold">No</span>
+                  <span className="text-emerald-700 font-bold">{t('common.no', 'No')}</span>
                 )}
               </div>
             </div>
@@ -542,22 +544,22 @@ export const ApplicationWorkspacePage = ({
           <div>
             <h2 className="text-xl font-black text-slate-900 flex items-center space-x-2">
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              <span>Application Progress & Milestones</span>
+              <span>{t('appWorkspace.progressTitle', 'Application Progress & Milestones')}</span>
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Checklist of completed vs pending steps for this industrial project
+              {t('appWorkspace.progressSubtitle', 'Checklist of completed vs pending steps for this industrial project')}
             </p>
           </div>
 
           <div className="space-y-3">
             {[
-              { title: 'Operational Profile Configured', desc: 'Business location, investment, and parameters registered', completed: true },
-              { title: 'Statutory Clearance Discovery', desc: `${approvals.length} mandatory and conditional licenses identified`, completed: true },
-              { title: 'Dependency Graph Generated', desc: 'Prerequisite sequence and topological ordering mapped', completed: true },
-              { title: 'Document Submissions & Database Verification', desc: `${approvedDocsCount} of ${documents.length} documents verified against official records`, completed: approvedDocsCount >= documents.length },
-              { title: 'Application Dossier Submission', desc: 'Lodged for single-window scrutinization', completed: isSubmitted || isCompleted },
-              { title: 'Department Scrutiny & Field Inspection', desc: 'Officer review and technical assessment', completed: isCompleted },
-              { title: 'Final Approvals & Grant of Licenses', desc: 'Digital certificates released', completed: isCompleted }
+              { title: t('appWorkspace.step1Title', 'Operational Profile Configured'), desc: t('appWorkspace.step1Desc', 'Business location, investment, and parameters registered'), completed: true },
+              { title: t('appWorkspace.step2Title', 'Statutory Clearance Discovery'), desc: t('appWorkspace.step2Desc', '{count} mandatory and conditional licenses identified', { count: approvals.length }), completed: true },
+              { title: t('appWorkspace.step3Title', 'Dependency Graph Generated'), desc: t('appWorkspace.step3Desc', 'Prerequisite sequence and topological ordering mapped'), completed: true },
+              { title: t('appWorkspace.step4Title', 'Document Submissions & Database Verification'), desc: t('appWorkspace.step4Desc', '{approved} of {total} documents verified against official records', { approved: approvedDocsCount, total: documents.length }), completed: approvedDocsCount >= documents.length },
+              { title: t('appWorkspace.step5Title', 'Application Dossier Submission'), desc: t('appWorkspace.step5Desc', 'Lodged for single-window scrutinization'), completed: isSubmitted || isCompleted },
+              { title: t('appWorkspace.step6Title', 'Department Scrutiny & Field Inspection'), desc: t('appWorkspace.step6Desc', 'Officer review and technical assessment'), completed: isCompleted },
+              { title: t('appWorkspace.step7Title', 'Final Approvals & Grant of Licenses'), desc: t('appWorkspace.step7Desc', 'Digital certificates released'), completed: isCompleted }
             ].map((step, idx) => (
               <div 
                 key={idx} 
@@ -579,7 +581,7 @@ export const ApplicationWorkspacePage = ({
                 <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
                   step.completed ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
                 }`}>
-                  {step.completed ? 'Completed' : 'Pending'}
+                  {step.completed ? t('appWorkspace.stepCompleted', 'Completed') : t('appWorkspace.stepPending', 'Pending')}
                 </span>
               </div>
             ))}
@@ -593,10 +595,10 @@ export const ApplicationWorkspacePage = ({
           <div>
             <h2 className="text-xl font-black text-slate-900 flex items-center space-x-2">
               <Calendar className="w-5 h-5 text-brand-700" />
-              <span>Application Audit Trail</span>
+              <span>{t('appWorkspace.timelineTitle', 'Application Audit Trail')}</span>
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Cryptographic and timestamped log of all events and submissions
+              {t('appWorkspace.timelineSubtitle', 'Cryptographic and timestamped log of all events and submissions')}
             </p>
           </div>
 

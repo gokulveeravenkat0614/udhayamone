@@ -13,6 +13,7 @@ import {
   Layers,
   ChevronRight
 } from 'lucide-react';
+import { useTranslation } from '../i18n/LanguageContext';
 
 export const RecommendedJourney = ({ 
   steps = [], 
@@ -21,6 +22,7 @@ export const RecommendedJourney = ({
   onViewApprovalDetails,
   onStartApplication 
 }) => {
+  const { t } = useTranslation();
   const iconMap = {
     Building2: <Building2 className="w-5 h-5 text-brand-700" />,
     FileCheck2: <FileCheck2 className="w-5 h-5 text-blue-700" />,
@@ -38,20 +40,20 @@ export const RecommendedJourney = ({
           <div>
             <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-white/10 text-amber-300 text-xs font-bold mb-2">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Optimized Statutory Sequence</span>
+              <span>{t('recommendedJourney.badge', 'Optimized Statutory Sequence')}</span>
             </div>
             <h3 className="text-2xl font-extrabold text-white tracking-tight">
-              Recommended Single-Window Approval Journey
+              {t('recommendedJourney.title', 'Recommended Single-Window Approval Journey')}
             </h3>
             <p className="text-blue-100 text-xs sm:text-sm mt-1 max-w-2xl font-normal">
-              Based on dependency graph topological sorting, this chronological journey minimizes sequential delays by highlighting parallel submission tracks.
+              {t('recommendedJourney.subtitle', 'Based on dependency graph topological sorting, this chronological journey minimizes sequential delays by highlighting parallel submission tracks.')}
             </p>
           </div>
 
           <div className="shrink-0 bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/15 text-right">
-            <div className="text-xs text-blue-200">Total Pipeline Duration</div>
-            <div className="text-2xl font-black text-amber-300">60 - 90 Days</div>
-            <div className="text-[11px] text-blue-200/80">With concurrent Stage 2 submissions</div>
+            <div className="text-xs text-blue-200">{t('recommendedJourney.durationTitle', 'Total Pipeline Duration')}</div>
+            <div className="text-2xl font-black text-amber-300">{t('recommendedJourney.durationValue', '60 - 90 Days')}</div>
+            <div className="text-[11px] text-blue-200/80">{t('recommendedJourney.durationDesc', 'With concurrent Stage 2 submissions')}</div>
           </div>
         </div>
       </div>
@@ -60,8 +62,8 @@ export const RecommendedJourney = ({
       <div className="p-4 rounded-2xl bg-indigo-50/80 border border-indigo-200 text-indigo-950 text-xs flex items-start space-x-3">
         <Zap className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
         <div className="leading-relaxed">
-          <strong className="text-indigo-900">Efficiency Tip (Parallel Tracks): </strong>
-          Apply for <strong>Pollution Consent to Establish (CTE)</strong> and <strong>Provisional Fire NOC</strong> concurrently while final architectural plans are reviewed by the Town Planning Authority. Both departments evaluate digital drawings independently.
+          <strong className="text-indigo-900">{t('recommendedJourney.tipTitle', 'Efficiency Tip (Parallel Tracks): ')}</strong>
+          {t('recommendedJourney.tipDesc', 'Apply for Pollution Consent to Establish (CTE) and Provisional Fire NOC concurrently while final architectural plans are reviewed by the Town Planning Authority. Both departments evaluate digital drawings independently.')}
         </div>
       </div>
 
@@ -103,7 +105,7 @@ export const RecommendedJourney = ({
                       {stepItem.parallelTrack && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center space-x-1">
                           <Zap className="w-2.5 h-2.5 text-emerald-600" />
-                          <span>Parallel Track Available</span>
+                          <span>{t('recommendedJourney.parallelAvailable', 'Parallel Track Available')}</span>
                         </span>
                       )}
                     </div>
@@ -116,9 +118,9 @@ export const RecommendedJourney = ({
                     </p>
 
                     <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 pt-2">
-                      <span>Agency: <strong className="text-slate-800">{stepItem.agency}</strong></span>
+                      <span>{t('recommendedJourney.agency', 'Agency:')} <strong className="text-slate-800">{stepItem.agency}</strong></span>
                       <span>•</span>
-                      <span>Timeline: <strong className="text-slate-800">{stepItem.duration}</strong></span>
+                      <span>{t('recommendedJourney.timeline', 'Timeline:')} <strong className="text-slate-800">{stepItem.duration}</strong></span>
                     </div>
                   </div>
                 </div>
@@ -126,7 +128,7 @@ export const RecommendedJourney = ({
                 {/* Related Approvals Chips */}
                 {relatedApprovals.length > 0 && (
                   <div className="shrink-0 flex flex-col items-end space-y-1.5 pt-2 md:pt-0">
-                    <span className="text-[10px] text-slate-400 font-semibold uppercase">Associated Clearances</span>
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase">{t('recommendedJourney.associatedClearances', 'Associated Clearances')}</span>
                     <div className="flex flex-wrap md:flex-col gap-1.5 items-end">
                       {relatedApprovals.map(app => (
                         <button

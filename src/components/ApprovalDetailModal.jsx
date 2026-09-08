@@ -9,8 +9,11 @@ import {
   ChevronRight,
   Info
 } from 'lucide-react';
+import { useTranslation } from '../i18n/LanguageContext';
 
 export const ApprovalDetailModal = ({ approval, isOpen, onClose, onStartApplication }) => {
+  const { t } = useTranslation();
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose();
@@ -39,6 +42,7 @@ export const ApprovalDetailModal = ({ approval, isOpen, onClose, onStartApplicat
           <button
             onClick={onClose}
             className="absolute top-5 right-5 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+            aria-label={t('common.close', 'Close')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -48,7 +52,7 @@ export const ApprovalDetailModal = ({ approval, isOpen, onClose, onStartApplicat
               {approval.category || 'Statutory Requirement'}
             </span>
             <span>•</span>
-            <span className="text-amber-300">Status: {approval.status || 'CHECK APPLICABILITY'}</span>
+            <span className="text-amber-300">{t('approvals.status', 'Status')}: {approval.status || 'CHECK APPLICABILITY'}</span>
           </div>
 
           <h2 className="text-2xl font-black tracking-tight text-white pr-10">
@@ -68,14 +72,14 @@ export const ApprovalDetailModal = ({ approval, isOpen, onClose, onStartApplicat
           <div className="space-y-2">
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center space-x-1.5">
               <Info className="w-4 h-4 text-brand-700" />
-              <span>Statutory Applicability & Purpose</span>
+              <span>{t('approvals.statutoryApplicabilityPurpose', 'Statutory Applicability & Purpose')}</span>
             </h4>
             <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-100 text-slate-800 leading-relaxed font-normal text-xs sm:text-sm space-y-2">
               <p>
-                <strong>Applicability: </strong>{approval.applicability}
+                <strong>{t('approvals.applicability', 'Applicability')}: </strong>{approval.applicability}
               </p>
               <p className="text-slate-600">
-                <strong>Why required: </strong>{approval.description}
+                <strong>{t('approvals.whyRequired', 'Why required')}: </strong>{approval.description}
               </p>
             </div>
           </div>
@@ -84,7 +88,7 @@ export const ApprovalDetailModal = ({ approval, isOpen, onClose, onStartApplicat
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
               <div className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">
-                Statutory Reference / Source
+                {t('approvals.statutoryRef', 'Statutory Reference / Source')}
               </div>
               <div className="mt-1 font-bold text-slate-800">
                 {approval.officialSource || 'Official Government Source'}
@@ -93,7 +97,7 @@ export const ApprovalDetailModal = ({ approval, isOpen, onClose, onStartApplicat
 
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
               <div className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">
-                Verification Status
+                {t('approvals.verificationStatus', 'Verification Status')}
               </div>
               <div className="mt-1 font-bold text-emerald-700 flex items-center space-x-1">
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -107,7 +111,7 @@ export const ApprovalDetailModal = ({ approval, isOpen, onClose, onStartApplicat
             <div className="space-y-3">
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center space-x-1.5">
                 <Layers className="w-4 h-4 text-brand-700" />
-                <span>Typical Procedural Steps</span>
+                <span>{t('approvals.proceduralSteps', 'Typical Procedural Steps')}</span>
               </h4>
               <div className="space-y-2 pl-2">
                 {approval.stages.map((stage, idx) => (
@@ -126,7 +130,7 @@ export const ApprovalDetailModal = ({ approval, isOpen, onClose, onStartApplicat
           <div className="space-y-2.5">
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center space-x-1.5">
               <FileText className="w-4 h-4 text-brand-700" />
-              <span>Key Required Documents for this Clearance</span>
+              <span>{t('approvals.keyRequiredDocs', 'Key Required Documents for this Clearance')}</span>
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {approval.requiredDocs?.map((doc, idx) => (
@@ -140,7 +144,7 @@ export const ApprovalDetailModal = ({ approval, isOpen, onClose, onStartApplicat
 
           {/* Disclaimer */}
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-500 italic">
-            * Note: Procedural timelines and applicability vary according to actual project investment, connected electrical load, and specific government notifications. Verify with the concerned authority before applying.
+            {t('approvals.disclaimerNote', '* Note: Procedural timelines and applicability vary according to actual project investment, connected electrical load, and specific government notifications. Verify with the concerned authority before applying.')}
           </div>
 
         </div>
@@ -151,7 +155,7 @@ export const ApprovalDetailModal = ({ approval, isOpen, onClose, onStartApplicat
             onClick={onClose}
             className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-100 transition-colors cursor-pointer"
           >
-            Close
+            {t('common.close', 'Close')}
           </button>
 
           <div className="flex items-center space-x-3 w-full sm:w-auto">
@@ -162,12 +166,12 @@ export const ApprovalDetailModal = ({ approval, isOpen, onClose, onStartApplicat
                 rel="noopener noreferrer"
                 className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-white border border-brand-200 hover:border-brand-400 text-brand-700 font-bold text-xs transition-colors flex items-center justify-center space-x-1.5"
               >
-                <span>Official Source</span>
+                <span>{t('approvals.officialSource', 'Official Source')}</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             ) : (
               <span className="px-3 py-2 rounded-xl bg-slate-100 text-slate-400 text-xs font-medium border border-slate-200">
-                Official source unavailable
+                {t('approvals.sourceUnavailable', 'Official source unavailable')}
               </span>
             )}
 
@@ -180,7 +184,7 @@ export const ApprovalDetailModal = ({ approval, isOpen, onClose, onStartApplicat
               }}
               className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center space-x-1 cursor-pointer"
             >
-              <span>Start Application (Demo)</span>
+              <span>{t('approvals.startAppDemo', 'Start Application (Demo)')}</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>

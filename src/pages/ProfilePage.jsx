@@ -13,12 +13,14 @@ import {
   Building2
 } from 'lucide-react';
 import { applicationApi, clearAuthSession } from '../services/api';
+import { useTranslation } from '../i18n/LanguageContext';
 
 export const ProfilePage = ({ 
   currentUser, 
   onLogout, 
   onNavigate 
 }) => {
+  const { t } = useTranslation();
   const [appStats, setAppStats] = useState({
     total: 0,
     active: 0,
@@ -63,7 +65,7 @@ export const ProfilePage = ({
           className="inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-500 hover:text-brand-700 transition-colors cursor-pointer group"
         >
           <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
-          <span>Back to Dashboard</span>
+          <span>{t('profile.back', 'Back to Dashboard')}</span>
         </button>
       </div>
 
@@ -83,7 +85,7 @@ export const ProfilePage = ({
               </span>
             </div>
             <p className="text-xs font-mono text-brand-700 font-bold mt-1">
-              Client ID: {clientId}
+              {t('profile.clientId', 'Client ID:')} {clientId}
             </p>
           </div>
         </div>
@@ -94,7 +96,7 @@ export const ProfilePage = ({
             className="px-4 py-2.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold transition-all flex items-center space-x-2 cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
-            <span>Log Out</span>
+            <span>{t('profile.logout', 'Log Out')}</span>
           </button>
         </div>
       </div>
@@ -106,7 +108,7 @@ export const ProfilePage = ({
             <Layers className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-xs font-bold text-slate-400 uppercase">Total Applications</div>
+            <div className="text-xs font-bold text-slate-400 uppercase">{t('profile.totalApplications', 'Total Applications')}</div>
             <div className="text-2xl font-black text-slate-900">{appStats.total}</div>
           </div>
         </div>
@@ -116,7 +118,7 @@ export const ProfilePage = ({
             <Clock className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-xs font-bold text-slate-400 uppercase">Active In-Progress</div>
+            <div className="text-xs font-bold text-slate-400 uppercase">{t('profile.activeInProgress', 'Active In-Progress')}</div>
             <div className="text-2xl font-black text-amber-600">{appStats.active}</div>
           </div>
         </div>
@@ -126,7 +128,7 @@ export const ProfilePage = ({
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-xs font-bold text-slate-400 uppercase">Completed / Submitted</div>
+            <div className="text-xs font-bold text-slate-400 uppercase">{t('profile.completedSubmitted', 'Completed / Submitted')}</div>
             <div className="text-2xl font-black text-emerald-600">{appStats.completed}</div>
           </div>
         </div>
@@ -135,15 +137,15 @@ export const ProfilePage = ({
       {/* Account Details Card */}
       <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">Account Details</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Your official account credentials and contact points</p>
+          <h2 className="text-lg font-bold text-slate-900">{t('profile.accountDetails', 'Account Details')}</h2>
+          <p className="text-xs text-slate-500 mt-0.5">{t('profile.accountSubtitle', 'Your official account credentials and contact points')}</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
             <div className="flex items-center text-xs font-bold text-slate-500">
               <User className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
-              <span>Full Name / Entity Name</span>
+              <span>{t('profile.fullName', 'Full Name / Entity Name')}</span>
             </div>
             <div className="text-sm font-bold text-slate-900">{currentUser?.name || 'Not provided'}</div>
           </div>
@@ -151,7 +153,7 @@ export const ProfilePage = ({
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
             <div className="flex items-center text-xs font-bold text-slate-500">
               <Mail className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
-              <span>Official Email Address</span>
+              <span>{t('profile.email', 'Official Email Address')}</span>
             </div>
             <div className="text-sm font-bold text-slate-900">{currentUser?.email || 'Not provided'}</div>
           </div>
@@ -159,7 +161,7 @@ export const ProfilePage = ({
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
             <div className="flex items-center text-xs font-bold text-slate-500">
               <Phone className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
-              <span>Registered Mobile</span>
+              <span>{t('profile.mobile', 'Registered Mobile')}</span>
             </div>
             <div className="text-sm font-bold text-slate-900">{currentUser?.mobile || '+91 98201 44521'}</div>
           </div>
@@ -167,7 +169,7 @@ export const ProfilePage = ({
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
             <div className="flex items-center text-xs font-bold text-slate-500">
               <Calendar className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
-              <span>Account Member Since</span>
+              <span>{t('profile.memberSince', 'Account Member Since')}</span>
             </div>
             <div className="text-sm font-bold text-slate-900">
               {currentUser?.createdAt 
@@ -180,13 +182,13 @@ export const ProfilePage = ({
         <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
           <div className="text-xs text-slate-500 flex items-center space-x-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>Single-Window Authentication & Encrypted Storage active</span>
+            <span>{t('profile.storageActive', 'Single-Window Authentication & Encrypted Storage active')}</span>
           </div>
           <button
             onClick={() => onNavigate('/my-applications')}
             className="px-4 py-2 rounded-xl bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold transition-all cursor-pointer"
           >
-            View All Applications &rarr;
+            {t('profile.viewAllApplications', 'View All Applications →')}
           </button>
         </div>
       </div>

@@ -21,6 +21,7 @@ import {
 import { STATES_AND_DISTRICTS, POPULAR_PRESETS } from '../data/locations';
 import { INDUSTRIES } from '../data/industries';
 import { calculateMSMEClassification, calculatePollutionCategory } from '../services/ruleEngine';
+import { useTranslation } from '../i18n/LanguageContext';
 
 export const BusinessForm = ({ 
   selectedState, 
@@ -42,6 +43,7 @@ export const BusinessForm = ({
   setBusinessProfile,
   onSubmit 
 }) => {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -139,15 +141,15 @@ export const BusinessForm = ({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!selectedState) {
-      setErrorMessage('Please select a State.');
+      setErrorMessage(t('form.errorState', 'Please select a State.'));
       return;
     }
     if (!selectedDistrict) {
-      setErrorMessage('Please select a District.');
+      setErrorMessage(t('form.errorDistrict', 'Please select a District.'));
       return;
     }
     if (!selectedIndustry) {
-      setErrorMessage('Please select an Industry Type.');
+      setErrorMessage(t('form.errorIndustry', 'Please select an Industry Type.'));
       return;
     }
 
@@ -174,28 +176,28 @@ export const BusinessForm = ({
             <div>
               <div className="inline-flex items-center space-x-2 px-2.5 py-1 rounded-md bg-white/10 text-blue-200 text-xs font-semibold mb-2">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Single-Window Discovery & Conditional Rules Engine</span>
+                <span>{t('form.singleWindowBadge', 'Single-Window Discovery & Conditional Rules Engine')}</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                Find Your Applicable Approvals & Dependencies
+                {t('form.title', 'Find Your Applicable Approvals & Dependencies')}
               </h2>
               <p className="text-blue-100 text-sm sm:text-base mt-1.5 max-w-2xl font-normal">
-                Submit your proposed location, industry, and business profile to generate applicable clearances, statutory exemptions, and recommended sequence.
+                {t('form.subtitle', 'Submit your proposed location, industry, and business profile to generate applicable clearances, statutory exemptions, and recommended sequence.')}
               </p>
             </div>
 
             {/* Quick Helper Badge */}
             <div className="shrink-0 bg-white/10 backdrop-blur-md rounded-2xl p-3.5 border border-white/15 hidden md:block text-right">
-              <div className="text-xs text-blue-200 font-medium">Clearance Pipeline</div>
-              <div className="text-lg font-black text-amber-300">4 Intelligent Stages</div>
-              <div className="text-[11px] text-blue-200/80">Location → Sector → Rules → Sequence</div>
+              <div className="text-xs text-blue-200 font-medium">{t('form.pipelineTitle', 'Clearance Pipeline')}</div>
+              <div className="text-lg font-black text-amber-300">{t('form.pipelineStages', '4 Intelligent Stages')}</div>
+              <div className="text-[11px] text-blue-200/80">{t('form.pipelineDesc', 'Location → Sector → Rules → Sequence')}</div>
             </div>
           </div>
 
           {/* Preset Quick Chips */}
           <div className="mt-5 pt-4 border-t border-white/10 flex flex-wrap items-center gap-2 text-xs">
             <span className="text-blue-200 font-medium flex items-center">
-              <Filter className="w-3.5 h-3.5 mr-1 text-amber-400" /> Fast Presets:
+              <Filter className="w-3.5 h-3.5 mr-1 text-amber-400" /> {t('form.fastPresets', 'Fast Presets:')}
             </span>
             {POPULAR_PRESETS.map((preset, idx) => {
               const isSelected = selectedState === preset.state && selectedDistrict === preset.district && selectedIndustry === preset.industry;
@@ -240,9 +242,9 @@ export const BusinessForm = ({
                   <span className="w-6 h-6 rounded-full bg-brand-100 text-brand-800 flex items-center justify-center text-xs font-black">
                     1
                   </span>
-                  <span>Select State</span>
+                  <span>{t('form.step1', 'Select State')}</span>
                 </span>
-                <span className="text-xs text-brand-600 font-semibold">Required</span>
+                <span className="text-xs text-brand-600 font-semibold">{t('common.required', 'Required')}</span>
               </label>
 
               <div className="relative">
@@ -251,10 +253,10 @@ export const BusinessForm = ({
                   onChange={handleStateChange}
                   className="w-full pl-10 pr-10 py-3.5 bg-slate-50 hover:bg-white focus:bg-white border-2 border-slate-200 focus:border-brand-600 rounded-xl text-slate-900 font-medium text-sm transition-all outline-hidden appearance-none cursor-pointer shadow-xs focus:ring-4 focus:ring-brand-500/10"
                 >
-                  <option value="" disabled>-- Choose State --</option>
+                  <option value="" disabled>{t('form.chooseState', '-- Choose State --')}</option>
                   {Object.keys(STATES_AND_DISTRICTS).map((st) => (
                     <option key={st} value={st}>
-                      {st}
+                      {t('states.' + st, st)}
                     </option>
                   ))}
                 </select>
@@ -275,7 +277,7 @@ export const BusinessForm = ({
                   <span className="w-6 h-6 rounded-full bg-brand-100 text-brand-800 flex items-center justify-center text-xs font-black">
                     2
                   </span>
-                  <span>Select District</span>
+                  <span>{t('form.step2', 'Select District')}</span>
                 </span>
                 <span className="text-xs text-brand-600 font-semibold">Dynamic</span>
               </label>
@@ -287,7 +289,7 @@ export const BusinessForm = ({
                   disabled={!selectedState || districtsList.length === 0}
                   className="w-full pl-10 pr-10 py-3.5 bg-slate-50 hover:bg-white focus:bg-white border-2 border-slate-200 focus:border-brand-600 rounded-xl text-slate-900 font-medium text-sm transition-all outline-hidden appearance-none cursor-pointer shadow-xs focus:ring-4 focus:ring-brand-500/10 disabled:bg-slate-100 disabled:cursor-not-allowed"
                 >
-                  <option value="" disabled>-- Select District --</option>
+                  <option value="" disabled>{t('form.chooseDistrict', '-- Select District --')}</option>
                   {districtsList.map((dist) => (
                     <option key={dist} value={dist}>
                       {dist}
@@ -311,7 +313,7 @@ export const BusinessForm = ({
                   <span className="w-6 h-6 rounded-full bg-brand-100 text-brand-800 flex items-center justify-center text-xs font-black">
                     3
                   </span>
-                  <span>Select Industry Type</span>
+                  <span>{t('form.step3', 'Select Industry Type')}</span>
                 </span>
                 <span className="text-xs text-brand-600 font-semibold">Classification</span>
               </label>
@@ -322,10 +324,10 @@ export const BusinessForm = ({
                   onChange={handleIndustryChange}
                   className="w-full pl-10 pr-10 py-3.5 bg-slate-50 hover:bg-white focus:bg-white border-2 border-slate-200 focus:border-brand-600 rounded-xl text-slate-900 font-medium text-sm transition-all outline-hidden appearance-none cursor-pointer shadow-xs focus:ring-4 focus:ring-brand-500/10"
                 >
-                  <option value="" disabled>-- Select Industry --</option>
+                  <option value="" disabled>{t('form.chooseIndustry', '-- Select Industry --')}</option>
                   {INDUSTRIES.map((ind) => (
                     <option key={ind.id} value={ind.id}>
-                      {ind.name}
+                      {t('industries.' + ind.id, ind.name)}
                     </option>
                   ))}
                 </select>
@@ -347,7 +349,7 @@ export const BusinessForm = ({
               <div className="flex items-center space-x-2">
                 <Sliders className="w-4 h-4 text-brand-700" />
                 <span className="text-xs font-bold text-slate-900">
-                  Business Profile & Operational Parameters (Conditional Rules)
+                  {t('form.advancedProfile', 'Business Profile & Operational Parameters (Conditional Rules)')}
                 </span>
                 <span className="px-2 py-0.5 rounded bg-blue-100 text-brand-800 text-[10px] font-extrabold">
                   Smart Defaults
@@ -359,7 +361,7 @@ export const BusinessForm = ({
                 onClick={() => setShowAdvanced(!showAdvanced)}
                 className="text-xs font-bold text-brand-700 hover:text-brand-900 flex items-center space-x-1 cursor-pointer"
               >
-                <span>{showAdvanced ? 'Hide Parameter Adjustments' : 'Customize Profile Parameters'}</span>
+                <span>{showAdvanced ? t('form.hideAdvanced', 'Hide Parameter Adjustments') : t('form.showAdvanced', 'Customize Profile Parameters')}</span>
                 {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </button>
             </div>
@@ -560,11 +562,11 @@ export const BusinessForm = ({
               {isLoading ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Evaluating Statutory Rules & Graph...</span>
+                  <span>{t('form.evaluating', 'Evaluating Statutory Rules & Graph...')}</span>
                 </>
               ) : (
                 <>
-                  <span>Find Required Approvals & Sequence</span>
+                  <span>{t('form.findApprovalsBtn', 'Find Required Approvals & Sequence')}</span>
                   <ArrowRight className="w-5 h-5" />
                 </>
               )}

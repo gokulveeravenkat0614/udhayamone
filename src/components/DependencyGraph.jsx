@@ -15,12 +15,14 @@ import {
   ChevronRight,
   FileText
 } from 'lucide-react';
+import { useTranslation } from '../i18n/LanguageContext';
 
 export const DependencyGraph = ({ 
   dependencyGraph, 
   onStartApplicationForApproval, 
   onViewDetails 
 }) => {
+  const { t } = useTranslation();
   const [selectedNodeId, setSelectedNodeId] = useState(() => {
     return dependencyGraph?.nodes?.[0]?.id || null;
   });
@@ -49,7 +51,7 @@ export const DependencyGraph = ({
       return (
         <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
           <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-          <span>APPROVED</span>
+          <span>{t('dependencyGraph.approved', 'APPROVED')}</span>
         </span>
       );
     }
@@ -57,7 +59,7 @@ export const DependencyGraph = ({
       return (
         <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
           <Clock className="w-3 h-3 text-blue-600" />
-          <span>UNDER REVIEW</span>
+          <span>{t('dependencyGraph.underReview', 'UNDER REVIEW')}</span>
         </span>
       );
     }
@@ -65,7 +67,7 @@ export const DependencyGraph = ({
       return (
         <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 animate-pulse">
           <Unlock className="w-3 h-3 text-indigo-600" />
-          <span>READY TO APPLY</span>
+          <span>{t('dependencyGraph.readyToApply', 'READY TO APPLY')}</span>
         </span>
       );
     }
@@ -73,13 +75,13 @@ export const DependencyGraph = ({
       return (
         <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-300">
           <Lock className="w-3 h-3 text-slate-500" />
-          <span>PREREQUISITES NEEDED</span>
+          <span>{t('dependencyGraph.prerequisitesNeeded', 'PREREQUISITES NEEDED')}</span>
         </span>
       );
     }
     return (
       <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-        <span>CHECK APPLICABILITY</span>
+        <span>{t('dependencyGraph.checkApplicability', 'CHECK APPLICABILITY')}</span>
       </span>
     );
   };
@@ -93,26 +95,26 @@ export const DependencyGraph = ({
           <div>
             <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-blue-50 text-brand-800 text-xs font-bold border border-blue-100 mb-2">
               <GitBranch className="w-4 h-4 text-brand-600" />
-              <span>Statutory Approval Dependency Engine</span>
+              <span>{t('dependencyGraph.engineBadge', 'Statutory Approval Dependency Engine')}</span>
             </div>
             <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              Interactive Approval Dependency Graph
+              {t('dependencyGraph.title', 'Interactive Approval Dependency Graph')}
             </h3>
             <p className="text-slate-600 text-xs sm:text-sm mt-1 max-w-3xl">
-              Government clearances must be obtained in statutory sequence. Approvals are organized into 4 lifecycle stages with prerequisite links.
+              {t('dependencyGraph.subtitle', 'Government clearances must be obtained in statutory sequence. Approvals are organized into 4 lifecycle stages with prerequisite links.')}
             </p>
           </div>
 
           {/* Quick Metrics Bar */}
           <div className="flex flex-wrap items-center gap-2">
             <div className="px-3.5 py-2 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs">
-              <span className="font-bold text-indigo-700">{actionableCount}</span> Actionable Now
+              <span className="font-bold text-indigo-700">{actionableCount}</span> {t('dependencyGraph.actionableNow', 'Actionable Now')}
             </div>
             <div className="px-3.5 py-2 rounded-2xl bg-slate-100 border border-slate-200 text-slate-700 text-xs">
-              <span className="font-bold text-slate-900">{blockedCount}</span> Awaiting Prior Stage
+              <span className="font-bold text-slate-900">{blockedCount}</span> {t('dependencyGraph.awaitingPriorStage', 'Awaiting Prior Stage')}
             </div>
             <div className="px-3.5 py-2 rounded-2xl bg-blue-50 border border-blue-200 text-blue-900 text-xs">
-              <span className="font-bold text-blue-700">{edges.length}</span> Prerequisite Links
+              <span className="font-bold text-blue-700">{edges.length}</span> {t('dependencyGraph.prerequisiteLinks', 'Prerequisite Links')}
             </div>
           </div>
         </div>
@@ -121,7 +123,7 @@ export const DependencyGraph = ({
         <div className="mt-6 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center space-x-1.5 overflow-x-auto text-xs font-bold pb-1">
             <span className="text-slate-400 font-semibold mr-1 flex items-center">
-              <Layers className="w-3.5 h-3.5 mr-1" /> View Phase:
+              <Layers className="w-3.5 h-3.5 mr-1" /> {t('dependencyGraph.viewPhase', 'View Phase:')}
             </span>
             <button
               onClick={() => setSelectedPhaseFilter('all')}
@@ -131,7 +133,7 @@ export const DependencyGraph = ({
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              All Stages ({nodes.length})
+              {t('dependencyGraph.allStages', `All Stages (${nodes.length})`, { count: nodes.length })}
             </button>
             {phases.map(p => (
               <button
@@ -143,14 +145,14 @@ export const DependencyGraph = ({
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                Phase {p.phaseNumber} ({p.nodes.length})
+                {t('dependencyGraph.phase', `Phase ${p.phaseNumber} (${p.nodes.length})`, { number: p.phaseNumber, count: p.nodes.length })}
               </button>
             ))}
           </div>
 
           <div className="text-[11px] text-slate-500 flex items-center space-x-2">
             <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-            <span>Click any node card to inspect its prerequisite chain</span>
+            <span>{t('dependencyGraph.clickPrompt', 'Click any node card to inspect its prerequisite chain')}</span>
           </div>
         </div>
       </div>
@@ -300,7 +302,7 @@ export const DependencyGraph = ({
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
                   <div className="font-bold text-slate-700 flex items-center space-x-1">
                     <Info className="w-3.5 h-3.5 text-brand-600" />
-                    <span>Statutory Legal Framework</span>
+                    <span>{t('dependencyGraph.framework', 'Statutory Legal Framework')}</span>
                   </div>
                   <div className="text-slate-600 text-[11px] leading-relaxed">
                     {selectedNode.officialSource || 'Published state & central statutory rules'}
@@ -313,7 +315,7 @@ export const DependencyGraph = ({
                 {/* Prerequisite Chain Status */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs font-bold text-slate-800">
-                    <span>Required Prerequisites:</span>
+                    <span>{t('dependencyGraph.prerequisitesRequired', 'Required Prerequisites:')}</span>
                     <span className="text-[11px] text-slate-500">
                       {selectedNode.prerequisites?.length || 0} required
                     </span>
@@ -351,7 +353,7 @@ export const DependencyGraph = ({
                   ) : (
                     <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center space-x-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>No prior approvals needed. You can apply directly!</span>
+                      <span>{t('dependencyGraph.noPrerequisites', 'No prior approvals needed. You can apply directly!')}</span>
                     </div>
                   )}
                 </div>
@@ -360,7 +362,7 @@ export const DependencyGraph = ({
                 {selectedNode.dependents && selectedNode.dependents.length > 0 && (
                   <div className="space-y-2 pt-2 border-t border-slate-100">
                     <div className="text-xs font-bold text-slate-800">
-                      Unlocks Downstream Clearances:
+                      {t('dependencyGraph.unblocksFollowing', 'Unlocks Downstream Clearances:')}
                     </div>
                     <div className="space-y-1">
                       {selectedNode.dependents.map((depId) => {
@@ -388,7 +390,7 @@ export const DependencyGraph = ({
                       className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-colors flex items-center justify-center space-x-1.5 cursor-pointer"
                     >
                       <FileText className="w-3.5 h-3.5" />
-                      <span>View Full Requirements & Documents</span>
+                      <span>{t('dependencyGraph.viewDetails', 'View Details')}</span>
                     </button>
                   )}
 
@@ -399,7 +401,7 @@ export const DependencyGraph = ({
                       rel="noopener noreferrer"
                       className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-50 text-brand-700 font-bold text-xs border border-brand-200 transition-colors flex items-center justify-center space-x-1.5"
                     >
-                      <span>Open Official Portal</span>
+                      <span>{t('requirementsView.officialPortal', 'Official Portal')}</span>
                       <ExternalLink className="w-3.5 h-3.5" />
                     </a>
                   )}
@@ -409,7 +411,7 @@ export const DependencyGraph = ({
                       onClick={() => onStartApplicationForApproval(selectedNode)}
                       className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-brand-700 to-blue-700 hover:from-brand-800 hover:to-blue-800 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all flex items-center justify-center space-x-1.5 cursor-pointer active:scale-98"
                     >
-                      <span>Start Application on Portal</span>
+                      <span>{t('dependencyGraph.applyNow', 'Apply Now →')}</span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
                   )}
@@ -424,19 +426,19 @@ export const DependencyGraph = ({
               <div className="grid grid-cols-2 gap-2 text-[11px]">
                 <div className="flex items-center space-x-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                  <span>Approved</span>
+                  <span>{t('dependencyGraph.approved', 'Approved')}</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-                  <span>Under Review</span>
+                  <span>{t('dependencyGraph.underReview', 'Under Review')}</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-                  <span>Ready to Apply</span>
+                  <span>{t('dependencyGraph.readyToApply', 'Ready to Apply')}</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
-                  <span>Waiting on Prior Stage</span>
+                  <span>{t('dependencyGraph.awaitingPriorStage', 'Waiting on Prior Stage')}</span>
                 </div>
               </div>
             </div>

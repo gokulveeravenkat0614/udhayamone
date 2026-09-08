@@ -33,6 +33,7 @@ import {
   getStoredUser, 
   clearAuthSession 
 } from './services/api';
+import { useTranslation } from './i18n/LanguageContext';
 
 // Lightweight URL Route Parser
 function parseRoute(pathname) {
@@ -91,6 +92,7 @@ function parseRoute(pathname) {
 }
 
 export default function App() {
+  const { t } = useTranslation();
   // Routing State
   const [currentPath, setCurrentPath] = useState(() => {
     return typeof window !== 'undefined' ? window.location.pathname : '/';
@@ -222,7 +224,7 @@ export default function App() {
     setCurrentUser(user);
     const role = user.role === 'admin' ? 'admin' : 'entrepreneur';
     setActiveRole(role);
-    showToast(`Welcome back, ${user.name}!`);
+    showToast(t('toasts.welcomeBack', `Welcome back, ${user.name}!`, { name: user.name }));
     fetchUserApplications();
     navigate('/dashboard');
   };
@@ -233,7 +235,7 @@ export default function App() {
     setCurrentUser(null);
     setApplications([]);
     setActiveRole('visitor');
-    showToast('Logged out successfully.');
+    showToast(t('toasts.loggedOut', 'Logged out successfully.'));
     navigate('/login');
   };
 
@@ -243,45 +245,41 @@ export default function App() {
     navigate('/wizard');
   };
 
-  // Form submission handler -> Triggers Page 2 results with API and client engine fallback
-  const handleFindApprovals = async () => {
-    let results = null;
+  // User initiates discovery from form
+  const handleFindApprovals = async (profileData) => {
+    const activeProfile = profileData || businessProfile;
+    setBusinessProfile(activeProfile);
 
-    try {
-      const res = await approvalApi.evaluate({
-        state: selectedState,
-        district: selectedDistrict,
-        industry: selectedIndustry,
-        ...businessProfile
-      }, applications);
-      if (res && res.success && res.data) {
-        results = res.data;
-      }
-    } catch {
-      // Backend offline or error -> run client-side rule engine seamlessly
-    }
-
-    if (!results) {
-      results = getRequirements(selectedState, selectedDistrict, selectedIndustry, businessProfile, applications);
-    }
-
+    // Compute deterministic statutory rules
+    const results = getRequirements(
+      selectedState, 
+      selectedDistrict, 
+      selectedIndustry, 
+      activeProfile, 
+      applications
+    );
     setRequirementsResult(results);
 
-    // If client is logged in, save to backend and open personal application workspace!
+    // If logged in, create an official Application record in MongoDB
     if (currentUser) {
       try {
-        const createRes = await applicationApi.create({
+        const createRes = await applicationApi.createApplication({
           state: selectedState,
           district: selectedDistrict,
           industry: selectedIndustry,
-          businessProfile,
-          applicantName: currentUser.name || `${selectedIndustry} Enterprise`,
-          promoter: currentUser.name
+          entityType: activeProfile.entityType || 'Private Limited Company',
+          investment: Number(activeProfile.investment) || 1.0,
+          turnover: Number(activeProfile.turnover) || 5.0,
+          employeeCount: Number(activeProfile.employeeCount) || 10,
+          powerRequired: Number(activeProfile.powerRequired) || 50,
+          builtUpArea: Number(activeProfile.builtUpArea) || 1000,
+          usesHazardousChemicals: Boolean(activeProfile.usesHazardousChemicals),
+          isExportOriented: Boolean(activeProfile.isExportOriented)
         });
 
         if (createRes && createRes.success && createRes.application) {
           const newAppId = createRes.application.applicationId || createRes.application._id;
-          showToast(`Application ${newAppId} created! Loading required approvals & sequence...`);
+          showToast(t('toasts.appCreated', `Application ${newAppId} created! Loading required approvals & sequence...`, { id: newAppId }));
           navigate(`/application/${encodeURIComponent(newAppId)}/approvals`);
           return;
         }
@@ -299,7 +297,7 @@ export default function App() {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 100);
-    showToast(`Required government approvals loaded for ${selectedIndustry} in ${selectedDistrict}, ${selectedState}!`);
+    showToast(t('toasts.approvalsLoaded', `Required government approvals loaded for ${selectedIndustry} in ${selectedDistrict}, ${selectedState}!`, { industry: t(`industries.${selectedIndustry}`, selectedIndustry), district: selectedDistrict, state: t(`states.${selectedState}`, selectedState) }));
   };
 
   // Preset selector
@@ -327,7 +325,7 @@ export default function App() {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 100);
-    showToast(`Loaded preset: ${district}, ${state} • ${industry}`);
+    showToast(t('toasts.presetLoaded', `Loaded preset: ${district}, ${state} • ${industry}`, { district, state: t(`states.${state}`, state), industry: t(`industries.${industry}`, industry) }));
   };
 
   // Back from Page 2 to Form
@@ -339,7 +337,7 @@ export default function App() {
   // Apply directly from Page 2
   const handleApplyForApprovalFromPage2 = (approval) => {
     if (!currentUser) {
-      showToast('Please log in or register to create and track applications.');
+      showToast(t('toasts.loginRequiredApp', 'Please log in or register to create and track applications.'));
       navigate('/login');
       return;
     }
@@ -391,14 +389,14 @@ export default function App() {
     };
 
     setApplications([newApp, ...applications]);
-    showToast(`Application ${newId} for "${approval.name}" successfully created!`);
+    showToast(t('toasts.appCreatedFor', `Application ${newId} for "${approval.name}" successfully created!`, { id: newId, name: approval.name }));
     navigate('/dashboard');
   };
 
   // Officer updates
   const handleUpdateApplicationByOfficer = (updatedApp) => {
     setApplications(prev => prev.map(a => a.id === updatedApp.id ? updatedApp : a));
-    showToast(`Officer update saved for Application ${updatedApp.id}!`);
+    showToast(t('toasts.officerSaved', `Officer update saved for Application ${updatedApp.id}!`, { id: updatedApp.id }));
   };
 
   // Route Analysis & Protection
@@ -410,11 +408,11 @@ export default function App() {
   useEffect(() => {
     if (isProtectedRoute && !currentUser) {
       showToast(currentRoute.name === 'verify'
-        ? 'Please log in to verify your enterprise identity.'
-        : 'Please log in to access your personal workspace.');
+        ? t('toasts.loginRequiredVerify', 'Please log in to verify your enterprise identity.')
+        : t('toasts.loginRequiredApp', 'Please log in to access your personal workspace.'));
       navigate('/login', { replace: true });
     }
-  }, [currentRoute.name, currentUser, isProtectedRoute, navigate, showToast]);
+  }, [currentRoute.name, currentUser, isProtectedRoute, navigate, showToast, t]);
 
   // Authenticated user on /login or /register redirects to /dashboard
   useEffect(() => {
@@ -564,7 +562,7 @@ export default function App() {
             onComplete={(verification) => {
               const newStatus = verification?.status === 'verified' ? 'verified' : 'pending';
               setCurrentUser(prev => prev ? ({ ...prev, verificationStatus: newStatus }) : prev);
-              showToast('Identity verification completed successfully!');
+              showToast(t('toasts.verificationSuccess', 'Identity verification completed successfully!'));
               navigate('/dashboard');
             }} 
             onBack={() => navigate('/dashboard')} 

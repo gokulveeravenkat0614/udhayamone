@@ -14,8 +14,10 @@ import {
   saveStoredComplianceItems, 
   getStatutoryReferenceCycles 
 } from '../data/complianceData';
+import { useTranslation } from '../i18n/LanguageContext';
 
 export const ComplianceSection = ({ selectedState = 'Maharashtra' }) => {
+  const { t } = useTranslation();
   const [items, setItems] = useState(() => getStoredComplianceItems());
   const [showAddModal, setShowAddModal] = useState(false);
   const [nameInput, setNameInput] = useState('');
@@ -73,9 +75,9 @@ export const ComplianceSection = ({ selectedState = 'Maharashtra' }) => {
 
   const getDaysRemaining = (dueDateStr) => {
     const diff = Math.ceil((new Date(dueDateStr) - new Date()) / (1000 * 60 * 60 * 24));
-    if (diff < 0) return `${Math.abs(diff)} days past`;
-    if (diff === 0) return `Due today`;
-    return `${diff} days left`;
+    if (diff < 0) return `${Math.abs(diff)} ${t('compliance.daysPast', 'days past')}`;
+    if (diff === 0) return t('compliance.dueToday', 'Due today');
+    return `${diff} ${t('compliance.daysLeft', 'days left')}`;
   };
 
   const upcomingCount = items.filter(i => i.status !== 'Completed').length;
@@ -100,13 +102,13 @@ export const ComplianceSection = ({ selectedState = 'Maharashtra' }) => {
         <div>
           <div className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-blue-50 text-brand-800 text-xs font-bold mb-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-brand-600" />
-            <span>Compliance Tracker</span>
+            <span>{t('nav.compliance', 'Compliance')}</span>
           </div>
           <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-            Stay Compliant
+            {t('compliance.title', 'Statutory Compliance Calendar & Deadlines')}
           </h2>
           <p className="text-slate-600 text-sm mt-1 max-w-xl">
-            Add statutory deadlines for your factory licenses, fire audits, environmental filings, and returns to track them in one place.
+            {t('compliance.subtitle', 'Track periodic filings, pollution renewals, factory returns, and statutory audits.')}
           </p>
         </div>
 
@@ -116,7 +118,7 @@ export const ComplianceSection = ({ selectedState = 'Maharashtra' }) => {
             className="px-5 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-bold text-xs shadow-xs transition-all flex items-center space-x-1.5 cursor-pointer active:scale-95"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Compliance Deadline</span>
+            <span>{t('compliance.addComplianceBtn', '+ Add Compliance Item')}</span>
           </button>
         </div>
       </div>
@@ -125,7 +127,7 @@ export const ComplianceSection = ({ selectedState = 'Maharashtra' }) => {
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
           <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-            Total Deadlines
+            {t('common.all', 'Total')}
           </div>
           <div className="text-3xl font-black text-slate-900 mt-1">
             {items.length}
@@ -137,7 +139,7 @@ export const ComplianceSection = ({ selectedState = 'Maharashtra' }) => {
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
           <div className="text-xs font-bold text-amber-700 uppercase tracking-wider">
-            Upcoming
+            {t('common.inProgress', 'Upcoming')}
           </div>
           <div className="text-3xl font-black text-amber-700 mt-1">
             {upcomingCount}
@@ -149,7 +151,7 @@ export const ComplianceSection = ({ selectedState = 'Maharashtra' }) => {
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs col-span-2 sm:col-span-1">
           <div className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
-            Completed
+            {t('common.completed', 'Completed')}
           </div>
           <div className="text-3xl font-black text-emerald-700 mt-1">
             {completedCount}
@@ -164,7 +166,7 @@ export const ComplianceSection = ({ selectedState = 'Maharashtra' }) => {
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-soft space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <h3 className="text-lg font-bold text-slate-900">
-            Your Upcoming Compliance Deadlines
+            {t('compliance.upcomingTasks', 'Upcoming Compliance Filings')}
           </h3>
           <span className="text-xs text-slate-400">
             {items.length} recorded
@@ -178,17 +180,17 @@ export const ComplianceSection = ({ selectedState = 'Maharashtra' }) => {
               <CalendarIcon className="w-6 h-6" />
             </div>
             <div className="text-base font-bold text-slate-800">
-              No compliance deadlines added yet.
+              {t('compliance.noUpcoming', 'No upcoming compliance items added yet.')}
             </div>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
-              You haven't configured any compliance reminders. Click "Add Compliance Deadline" above to add your factory, fire, or tax return filing dates.
+              {t('compliance.subtitle', 'Track periodic filings, pollution renewals, factory returns, and statutory audits.')}
             </p>
             <button
               onClick={() => setShowAddModal(true)}
               className="px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors inline-flex items-center space-x-1.5 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Add First Deadline</span>
+              <span>{t('compliance.addComplianceBtn', '+ Add Compliance Item')}</span>
             </button>
           </div>
         ) : (

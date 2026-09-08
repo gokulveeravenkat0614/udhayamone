@@ -3,6 +3,7 @@ import { Bot, MessageCircle, Send, Sparkles, X, Loader2, RotateCcw } from 'lucid
 import { assistantApi, buildApiUrl } from '../services/api';
 import { getRequirements } from '../data/requirementsData';
 import { SCHEMES_DATA } from '../data/schemesData';
+import { useTranslation } from '../i18n/LanguageContext';
 
 function getSessionId() {
   const key = 'udyamone_ai_session_id';
@@ -104,9 +105,13 @@ export function AIAssistant({
   selectedDistrict,
   selectedIndustry
 }) {
+  const { t, language } = useTranslation();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState([INITIAL_MESSAGE]);
+  const [messages, setMessages] = useState(() => [{
+    role: 'assistant',
+    content: t('ai.initialMessage', INITIAL_MESSAGE.content)
+  }]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [lastFailedMessage, setLastFailedMessage] = useState(null);
@@ -115,13 +120,29 @@ export function AIAssistant({
   const isSendingRef = useRef(false);
   const [sessionId, setSessionId] = useState(() => getSessionId());
 
+  // Dynamically update greeting if user switches language and has not yet started chatting
+  useEffect(() => {
+    setMessages(prev => {
+      if (prev.length === 1 && prev[0].role === 'assistant') {
+        return [{
+          role: 'assistant',
+          content: t('ai.initialMessage', INITIAL_MESSAGE.content)
+        }];
+      }
+      return prev;
+    });
+  }, [language, t]);
+
   function handleNewConversation() {
     const newId = typeof crypto !== 'undefined' && crypto.randomUUID
       ? crypto.randomUUID()
       : `session-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     localStorage.setItem('udyamone_ai_session_id', newId);
     setSessionId(newId);
-    setMessages([INITIAL_MESSAGE]);
+    setMessages([{
+      role: 'assistant',
+      content: t('ai.initialMessage', INITIAL_MESSAGE.content)
+    }]);
     setError('');
     setLastFailedMessage(null);
     isSendingRef.current = false;
@@ -240,7 +261,8 @@ export function AIAssistant({
         message,
         sessionId,
         history: nextMessages.slice(-10),
-        websiteContext
+        websiteContext,
+        language
       });
 
       if (data && typeof data.reply === 'string' && data.reply.trim().length > 0) {
@@ -259,25 +281,25 @@ export function AIAssistant({
       const code = err.response?.data?.code || err.data?.code;
 
       if (status === 401 || status === 403) {
-        setError('Please sign in again.');
+        setError(t('auth.invalidCredentials', 'Please sign in again.'));
       } else if (status === 404) {
-        setError('AI service endpoint is unavailable.');
+        setError(t('ai.serviceUnavailable', 'AI service endpoint is unavailable.'));
       } else if (status === 429) {
         if (code === 'AI_PROVIDER_QUOTA_EXCEEDED') {
           setAiConfigured(false);
-          setError('AI service is temporarily unavailable.');
+          setError(t('ai.serviceUnavailable', 'AI service is temporarily unavailable.'));
         } else {
-          setError('AI service is busy. Please try again shortly.');
+          setError(t('ai.serviceUnavailable', 'AI service is busy. Please try again shortly.'));
         }
       } else if (status === 502 || status === 503 || code === 'AI_PROVIDER_CONFIGURATION_MISSING' || code === 'AI_NOT_CONFIGURED') {
         setAiConfigured(false);
-        setError('AI service is temporarily unavailable.');
+        setError(t('ai.serviceUnavailable', 'AI service is temporarily unavailable.'));
       } else if (status === 500) {
-        setError('AI service is temporarily unavailable.');
+        setError(t('ai.serviceUnavailable', 'AI service is temporarily unavailable.'));
       } else if (err.name === 'NetworkError' || status === 0 || (typeof navigator !== 'undefined' && !navigator.onLine) || String(err.message || '').toLowerCase().includes('network') || String(err.message || '').toLowerCase().includes('failed to fetch')) {
-        setError('Unable to connect to application service.');
+        setError(t('ai.serviceUnavailable', 'Unable to connect to application service.'));
       } else {
-        setError('AI service is temporarily unavailable.');
+        setError(t('ai.serviceUnavailable', 'AI service is temporarily unavailable.'));
       }
     } finally {
       setLoading(false);
@@ -294,6 +316,15 @@ export function AIAssistant({
     }
   }
 
+  const dynamicStarterQuestions = [
+    t('ai.starterQ1', 'What is Udyam registration?'),
+    t('ai.starterQ2', 'What documents do I need?'),
+    t('ai.starterQ3', 'What is GST?'),
+    t('ai.starterQ4', 'Explain pollution categories'),
+    t('ai.starterQ5', 'Which government schemes can help me?'),
+    t('ai.starterQ6', 'What should I do first?')
+  ];
+
   return (
     <>
       {open && (
@@ -304,10 +335,10 @@ export function AIAssistant({
                 <Bot size={22} />
               </div>
               <div>
-                <div className="font-bold">UdyamOne AI</div>
+                <div className="font-bold">{t('ai.chatTitle', 'UdyamOne AI')}</div>
                 <div className="text-xs text-blue-100 flex items-center gap-1">
                   <span className={`w-1.5 h-1.5 rounded-full ${aiConfigured === false ? 'bg-amber-300' : 'bg-emerald-300'}`} />
-                  {aiConfigured === false ? 'Service unavailable' : 'Service ready'}
+                  {aiConfigured === false ? t('ai.serviceUnavailable', 'Service unavailable') : t('ai.serviceReady', 'Service ready')}
                 </div>
               </div>
             </div>
@@ -316,17 +347,17 @@ export function AIAssistant({
                 type="button"
                 onClick={handleNewConversation}
                 className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/90 hover:text-white transition flex items-center gap-1.5 text-xs font-medium border border-white/15"
-                title="Start new conversation"
-                aria-label="Start new conversation"
+                title={t('ai.newChat', 'Start new conversation')}
+                aria-label={t('ai.newChat', 'Start new conversation')}
               >
                 <RotateCcw size={13} />
-                <span className="hidden sm:inline">New Chat</span>
+                <span className="hidden sm:inline">{t('ai.newChat', 'New Chat')}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 className="p-2 rounded-xl hover:bg-white/10"
-                aria-label="Close UdyamOne AI"
+                aria-label={t('common.close', 'Close')}
               >
                 <X size={20} />
               </button>
@@ -335,8 +366,8 @@ export function AIAssistant({
 
           <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 text-xs text-slate-600">
             {currentUser
-              ? <>Signed in as <span className="font-semibold text-slate-800">{currentUser.name}</span>. I can also read your latest verification status.</>
-              : <>Sign in to let me answer questions using your saved verification status.</>}
+              ? <>{t('ai.signedIn', 'Signed in as {name}. I can also read your latest verification status.', { name: currentUser.name })}</>
+              : <>{t('ai.signInNotice', 'Sign in to let me answer questions using your saved verification status.')}</>}
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3 bg-white">
@@ -359,7 +390,7 @@ export function AIAssistant({
               <div className="flex justify-start">
                 <div className="rounded-2xl rounded-bl-md bg-slate-100 px-4 py-3 text-slate-600 flex items-center gap-2 text-sm shadow-sm">
                   <Loader2 size={16} className="animate-spin text-brand-600" />
-                  <span>UdyamOne AI is thinking...</span>
+                  <span>{t('ai.thinking', 'UdyamOne AI is thinking...')}</span>
                 </div>
               </div>
             )}
@@ -375,7 +406,7 @@ export function AIAssistant({
                     className="inline-flex items-center gap-1.5 self-start sm:self-auto px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-xs transition shadow-sm disabled:opacity-50"
                   >
                     <RotateCcw size={12} />
-                    Retry
+                    {t('ai.retry', 'Retry')}
                   </button>
                 )}
               </div>
@@ -386,7 +417,7 @@ export function AIAssistant({
 
           {messages.length <= 1 && (
             <div className="px-4 pb-3 flex flex-wrap gap-2">
-              {starterQuestions.map(question => (
+              {dynamicStarterQuestions.map(question => (
                 <button
                   key={question}
                   type="button"
@@ -408,7 +439,7 @@ export function AIAssistant({
                 onKeyDown={handleKeyDown}
                 rows={1}
                 maxLength={2000}
-                placeholder="Ask UdyamOne AI..."
+                placeholder={t('ai.placeholder', 'Ask UdyamOne AI...')}
                 className="flex-1 resize-none outline-none text-sm text-slate-800 placeholder:text-slate-400 max-h-24"
               />
               <button
@@ -416,14 +447,14 @@ export function AIAssistant({
                 disabled={!input.trim() || loading}
                 onClick={() => sendMessage()}
                 className="w-10 h-10 rounded-xl bg-brand-600 text-white flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed hover:bg-brand-700 transition"
-                aria-label="Send message"
+                aria-label={t('common.submit', 'Send message')}
               >
                 <Send size={18} />
               </button>
             </div>
             <div className="mt-2 text-[10px] text-slate-400 flex items-center gap-1">
               <Sparkles size={11} />
-              AI answers are guidance; verify important requirements with official authorities.
+              {t('ai.disclaimer', 'AI answers are guidance; verify important requirements with official authorities.')}
             </div>
           </div>
         </div>
@@ -433,7 +464,7 @@ export function AIAssistant({
         type="button"
         onClick={() => setOpen(value => !value)}
         className="fixed bottom-5 right-4 sm:right-6 z-[71] w-16 h-16 rounded-full bg-brand-600 hover:bg-brand-700 text-white shadow-xl shadow-brand-600/30 flex items-center justify-center transition-all hover:scale-105"
-        aria-label="Open UdyamOne AI assistant"
+        aria-label={t('ai.chatTitle', 'Open UdyamOne AI assistant')}
       >
         {open ? <X size={26} /> : <MessageCircle size={28} />}
         {!open && (

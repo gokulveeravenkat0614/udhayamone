@@ -396,11 +396,11 @@ export const applicationApi = {
 };
 
 export const assistantApi = {
-  chat: ({ message, sessionId, history, websiteContext }) =>
+  chat: ({ message, sessionId, history, websiteContext, language }) =>
     request('/ai/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, sessionId, history, websiteContext })
+      body: JSON.stringify({ message, sessionId, history, websiteContext, language })
     }),
   health: () => request('/ai/health'),
   history: (sessionId) => request(`/ai/history?sessionId=${encodeURIComponent(sessionId)}`),

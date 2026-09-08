@@ -12,6 +12,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { authApi, setAuthSession } from '../services/api';
+import { useTranslation } from '../i18n/LanguageContext';
 
 export const LoginPage = ({ 
   onLoginSuccess, 
@@ -19,6 +20,7 @@ export const LoginPage = ({
   initialEmail = '',
   successMessage = '' 
 }) => {
+  const { t } = useTranslation();
   const [identifier, setIdentifier] = useState(initialEmail || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -102,7 +104,7 @@ export const LoginPage = ({
             className="inline-flex items-center text-xs font-semibold text-slate-500 hover:text-brand-700 transition-colors cursor-pointer group"
           >
             <ArrowLeft className="w-3.5 h-3.5 mr-1.5 transition-transform group-hover:-translate-x-1" />
-            Back to Home
+            {t('auth.backToHome', 'Back to Home')}
           </button>
         </div>
 
@@ -112,10 +114,10 @@ export const LoginPage = ({
             <Building2 className="w-7 h-7 text-white" />
           </div>
           <h2 className="text-3xl font-black tracking-tight text-slate-900">
-            Sign In to <span className="text-brand-700">UdyamOne</span>
+            {t('auth.loginTitle', 'Welcome Back')} <span className="text-brand-700">UdyamOne</span>
           </h2>
           <p className="mt-2 text-sm text-slate-600">
-            Access your personal single-window industrial approval workspace
+            {t('auth.loginSubtitle', 'Log in to your UdyamOne industrial workspace')}
           </p>
         </div>
 
@@ -142,7 +144,7 @@ export const LoginPage = ({
             {/* Email or Mobile */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Email or Mobile Number <span className="text-red-500">*</span>
+                {t('auth.emailOrMobile', 'Email or Mobile Number')} <span className="text-red-500">*</span>
               </label>
               <div className="relative rounded-xl shadow-2xs">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -164,7 +166,7 @@ export const LoginPage = ({
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Password <span className="text-red-500">*</span>
+                  {t('auth.password', 'Password')} <span className="text-red-500">*</span>
                 </label>
               </div>
               <div className="relative rounded-xl shadow-2xs">
@@ -189,12 +191,12 @@ export const LoginPage = ({
                   {showPassword ? (
                     <span className="flex items-center space-x-1">
                       <EyeOff className="w-4 h-4 text-slate-400" />
-                      <span className="text-[11px]">Hide</span>
+                      <span className="text-[11px]">{t('auth.hide', 'Hide')}</span>
                     </span>
                   ) : (
                     <span className="flex items-center space-x-1">
                       <Eye className="w-4 h-4 text-slate-400" />
-                      <span className="text-[11px]">Show</span>
+                      <span className="text-[11px]">{t('auth.show', 'Show')}</span>
                     </span>
                   )}
                 </button>
@@ -211,10 +213,10 @@ export const LoginPage = ({
                 {loading ? (
                   <span className="flex items-center space-x-2">
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                    <span>Signing In...</span>
+                    <span>{t('auth.loggingIn', 'Signing In...')}</span>
                   </span>
                 ) : (
-                  <span>Log In</span>
+                  <span>{t('auth.logInBtn', 'Log In')}</span>
                 )}
               </button>
             </div>
@@ -223,13 +225,13 @@ export const LoginPage = ({
           {/* Links */}
           <div className="mt-6 pt-6 border-t border-slate-100 text-center text-xs text-slate-600 space-y-2">
             <p>
-              Don't have an account?{' '}
+              {t('auth.dontHaveAccount', "Don't have an account?")}{' '}
               <button
                 type="button"
                 onClick={() => onNavigate && onNavigate('/register')}
                 className="font-bold text-brand-700 hover:text-brand-800 underline underline-offset-2 cursor-pointer"
               >
-                Register
+                {t('nav.register', 'Register')}
               </button>
             </p>
           </div>
@@ -239,34 +241,34 @@ export const LoginPage = ({
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-800 flex items-center space-x-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                <span>Demo Account</span>
+                <span>{t('auth.demoAccounts', 'Demo Account')}</span>
               </span>
               <button
                 type="button"
                 onClick={() => handleFillDemo(false)}
                 className="text-[11px] font-bold text-brand-800 bg-white hover:bg-amber-100/70 border border-amber-300 px-2 py-0.5 rounded-lg shadow-2xs transition-colors cursor-pointer"
               >
-                Auto-fill Form
+                {t('auth.fillDemo', 'Auto-fill Form')}
               </button>
             </div>
             <div className="space-y-1 font-mono text-[11px] text-slate-700">
               <div>
-                <span className="text-slate-500">Email:</span>{' '}
+                <span className="text-slate-500">{t('auth.email', 'Email')}:</span>{' '}
                 <strong className="text-slate-900">demo@udyamone.test</strong>
               </div>
               <div>
-                <span className="text-slate-500">Password:</span>{' '}
+                <span className="text-slate-500">{t('auth.password', 'Password')}:</span>{' '}
                 <strong className="text-slate-900">Password@123</strong>
               </div>
             </div>
             <div className="mt-2.5 pt-2 border-t border-amber-200/60 flex items-center justify-between text-[11px]">
-              <span className="text-amber-800 text-[10px]">Instant access to pre-evaluated applications</span>
+              <span className="text-amber-800 text-[10px]">{t('auth.demoSubtitle', 'Instant access to pre-evaluated applications')}</span>
               <button
                 type="button"
                 onClick={() => handleFillDemo(true)}
                 className="font-bold text-brand-700 hover:underline cursor-pointer"
               >
-                One-Click Sign In &rarr;
+                {t('auth.oneClickSignIn', 'One-Click Sign In →')}
               </button>
             </div>
           </div>

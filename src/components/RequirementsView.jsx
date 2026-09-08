@@ -27,6 +27,7 @@ import { NextStepsTimeline } from './NextStepsTimeline';
 import { DependencyGraph } from './DependencyGraph';
 import { RecommendedJourney } from './RecommendedJourney';
 import { REQUIREMENT_CATEGORIES } from '../data/requirementsData';
+import { useTranslation } from '../i18n/LanguageContext';
 
 export const RequirementsView = ({ 
   requirements, 
@@ -37,6 +38,7 @@ export const RequirementsView = ({
   _onNavigateToCompliance,
   _onNavigateToSchemes 
 }) => {
+  const { t } = useTranslation();
   const [selectedApprovalModal, setSelectedApprovalModal] = useState(null);
   // Main tabs: 'approvals', 'graph', 'journey', 'exemptions', 'documents', 'otherRegs'
   const [activeMainTab, setActiveMainTab] = useState('approvals');
@@ -106,12 +108,12 @@ export const RequirementsView = ({
           className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-200 shadow-2xs transition-all w-fit cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4 text-brand-700" />
-          <span>← Back / Change Business Parameters</span>
+          <span>{t('requirementsView.back', '← Back / Change Business Parameters')}</span>
         </button>
 
         <div className="flex items-center space-x-2 text-xs text-slate-500">
-          <span>Required Clearances:</span>
-          <span className="font-bold text-slate-900">Government Approvals, Licenses & NOCs</span>
+          <span>{t('requirementsView.requiredClearances', 'Required Clearances:')}</span>
+          <span className="font-bold text-slate-900">{t('requirementsView.approvalsNocs', 'Government Approvals, Licenses & NOCs')}</span>
         </div>
       </div>
 
@@ -123,7 +125,7 @@ export const RequirementsView = ({
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <div className="inline-block text-[11px] font-bold uppercase tracking-wider text-brand-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">
-                EVALUATED BUSINESS PROFILE & CLASSIFICATION
+                {t('requirementsView.profileBadge', 'EVALUATED BUSINESS PROFILE & CLASSIFICATION')}
               </div>
               {msmeClassification && (
                 <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
@@ -135,30 +137,30 @@ export const RequirementsView = ({
             <div className="flex flex-wrap items-center gap-2 mt-1">
               <div className="px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold flex items-center space-x-1.5">
                 <MapPin className="w-3.5 h-3.5 text-brand-700" />
-                <span>State: <strong className="text-slate-900">{state}</strong></span>
+                <span>{t('requirementsView.state', 'State:')} <strong className="text-slate-900">{t(`states.${state}`, state)}</strong></span>
               </div>
 
               <div className="px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold flex items-center space-x-1.5">
                 <Building2 className="w-3.5 h-3.5 text-blue-700" />
-                <span>District: <strong className="text-slate-900">{district}</strong></span>
+                <span>{t('requirementsView.district', 'District:')} <strong className="text-slate-900">{district}</strong></span>
               </div>
 
               <div className="px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold flex items-center space-x-1.5">
                 <Factory className="w-3.5 h-3.5 text-amber-700" />
-                <span>Industry: <strong className="text-slate-900">{industry}</strong></span>
+                <span>{t('requirementsView.industry', 'Industry:')} <strong className="text-slate-900">{t(`industries.${industry}`, industry)}</strong></span>
               </div>
 
               {businessProfile?.entityType && (
                 <div className="px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold flex items-center space-x-1.5">
                   <Briefcase className="w-3.5 h-3.5 text-indigo-700" />
-                  <span>Entity: <strong className="text-slate-900">{businessProfile.entityType}</strong></span>
+                  <span>{t('requirementsView.entity', 'Entity:')} <strong className="text-slate-900">{businessProfile.entityType}</strong></span>
                 </div>
               )}
 
               {pollutionClassification && (
                 <div className="px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold flex items-center space-x-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                  <span>Pollution: <strong className="text-slate-900">{pollutionClassification.category} Category</strong></span>
+                  <span>{t('requirementsView.pollution', 'Pollution:')} <strong className="text-slate-900">{t(`pollution.${pollutionClassification.category}`, pollutionClassification.category)} {t('requirementsView.category', 'Category')}</strong></span>
                 </div>
               )}
             </div>
@@ -178,50 +180,50 @@ export const RequirementsView = ({
               title="Click to jump directly to the approvals list"
             >
               <div className="text-xs font-bold text-slate-500 uppercase tracking-wider group-hover:text-brand-800 flex items-center justify-between">
-                <span>Applicable Approvals</span>
-                <span className="text-brand-700 font-bold text-[10px]">Jump ↓</span>
+                <span>{t('requirementsView.applicableApprovals', 'Applicable Approvals')}</span>
+                <span className="text-brand-700 font-bold text-[10px]">{t('requirementsView.jumpDown', 'Jump ↓')}</span>
               </div>
               <div className="text-3xl font-black text-brand-900 mt-1">
                 {calculatedApprovalsCount}
               </div>
               <div className="text-[11px] text-slate-500 mt-0.5">
-                Statutory mandatory clearances
+                {t('requirementsView.mandatoryClearances', 'Statutory mandatory clearances')}
               </div>
             </div>
 
             <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
               <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Documents to Prepare
+                {t('requirementsView.docsToPrepare', 'Documents to Prepare')}
               </div>
               <div className="text-3xl font-black text-slate-900 mt-1">
                 {calculatedDocsCount}
               </div>
               <div className="text-[11px] text-slate-500 mt-0.5">
-                Standard documentation items
+                {t('requirementsView.standardDocs', 'Standard documentation items')}
               </div>
             </div>
 
             <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
               <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Actionable Now
+                {t('requirementsView.actionableNow', 'Actionable Now')}
               </div>
               <div className="text-3xl font-black text-indigo-700 mt-1">
                 {actionableCount}
               </div>
               <div className="text-[11px] text-slate-500 mt-0.5">
-                Prerequisites satisfied
+                {t('requirementsView.prerequisitesSatisfied', 'Prerequisites satisfied')}
               </div>
             </div>
 
             <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
               <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Conditional Exemptions
+                {t('requirementsView.conditionalExemptions', 'Conditional Exemptions')}
               </div>
               <div className="text-3xl font-black text-slate-700 mt-1">
                 {exemptApprovals.length}
               </div>
               <div className="text-[11px] text-slate-500 mt-0.5">
-                Evaluated as not required
+                {t('requirementsView.evaluatedNotRequired', 'Evaluated as not required')}
               </div>
             </div>
 
@@ -235,7 +237,7 @@ export const RequirementsView = ({
       <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start space-x-3 shadow-2xs">
         <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
         <div className="leading-relaxed">
-          <strong>Notice: </strong>UdyamOne is an MVP prototype. Requirements shown may vary based on location, industry, project size and applicable regulations. Users should verify requirements with the relevant official government authority before submission.
+          {t('requirementsView.notice', 'Notice: UdyamOne is an MVP prototype. Requirements shown may vary based on location, industry, project size and applicable regulations. Users should verify requirements with the relevant official government authority before submission.')}
         </div>
       </div>
 
@@ -257,7 +259,7 @@ export const RequirementsView = ({
           }`}
         >
           <ShieldCheck className="w-4 h-4 text-brand-700" />
-          <span>Required Approvals ({calculatedApprovalsCount})</span>
+          <span>{t('requirementsView.tabApprovals', `Required Approvals (${calculatedApprovalsCount})`, { count: calculatedApprovalsCount })}</span>
         </button>
 
         {/* Tab 2: Dependency Graph */}
@@ -270,7 +272,7 @@ export const RequirementsView = ({
           }`}
         >
           <GitBranch className="w-4 h-4 text-indigo-600" />
-          <span>Dependency Graph ({dependencyGraph?.nodes?.length || calculatedApprovalsCount})</span>
+          <span>{t('requirementsView.tabGraph', `Dependency Graph (${dependencyGraph?.nodes?.length || calculatedApprovalsCount})`, { count: dependencyGraph?.nodes?.length || calculatedApprovalsCount })}</span>
         </button>
 
         {/* Tab 3: Recommended Sequence / Journey */}
@@ -283,7 +285,7 @@ export const RequirementsView = ({
           }`}
         >
           <Sparkles className="w-4 h-4 text-amber-600" />
-          <span>Approval Journey ({nextSteps.length} Stages)</span>
+          <span>{t('requirementsView.tabJourney', `Approval Journey (${nextSteps.length} Stages)`, { count: nextSteps.length })}</span>
         </button>
 
         {/* Tab 4: Conditional Exemptions */}
@@ -296,7 +298,7 @@ export const RequirementsView = ({
           }`}
         >
           <HelpCircle className="w-4 h-4 text-slate-500" />
-          <span>Conditional Exemptions ({exemptApprovals.length})</span>
+          <span>{t('requirementsView.tabExemptions', `Conditional Exemptions (${exemptApprovals.length})`, { count: exemptApprovals.length })}</span>
         </button>
 
         {/* Tab 5: Documents */}
@@ -309,7 +311,7 @@ export const RequirementsView = ({
           }`}
         >
           <FileText className="w-4 h-4 text-emerald-600" />
-          <span>Required Documents ({calculatedDocsCount})</span>
+          <span>{t('requirementsView.tabDocs', `Required Documents (${calculatedDocsCount})`, { count: calculatedDocsCount })}</span>
         </button>
 
         {/* Tab 6: Other Registrations */}
@@ -322,7 +324,7 @@ export const RequirementsView = ({
           }`}
         >
           <Building2 className="w-4 h-4 text-indigo-600" />
-          <span>Statutory Registrations ({otherRegistrations.length})</span>
+          <span>{t('requirementsView.tabOtherRegs', `Statutory Registrations (${otherRegistrations.length})`, { count: otherRegistrations.length })}</span>
         </button>
       </div>
 
@@ -335,19 +337,19 @@ export const RequirementsView = ({
               <div>
                 <div className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-800 text-xs font-bold mb-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Statutory Government Clearances</span>
+                  <span>{t('requirementsView.clearancesBadge', 'Statutory Government Clearances')}</span>
                 </div>
                 <h3 className="text-2xl font-black text-slate-900 tracking-tight">
-                  Required Government Approvals, Licenses & NOCs
+                  {t('requirementsView.approvalsTitle', 'Required Government Approvals, Licenses & NOCs')}
                 </h3>
                 <p className="text-slate-600 text-xs sm:text-sm mt-1">
-                  Required government approvals, certificates, licenses, NOCs, and permissions for your facility in <strong className="text-slate-800">{district}, {state}</strong>.
+                  {t('requirementsView.approvalsDesc', `Required government approvals, certificates, licenses, NOCs, and permissions for your facility in ${district}, ${state}.`, { district, state: t(`states.${state}`, state) })}
                 </p>
               </div>
 
               <div className="flex items-center space-x-2 shrink-0">
                 <span className="px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200">
-                  Showing {filteredApprovals.length} of {calculatedApprovalsCount} Approvals
+                  {t('requirementsView.showingCount', `Showing ${filteredApprovals.length} of ${calculatedApprovalsCount} Approvals`, { filtered: filteredApprovals.length, total: calculatedApprovalsCount })}
                 </span>
               </div>
             </div>
@@ -356,7 +358,7 @@ export const RequirementsView = ({
             <div className="mt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center space-x-1 text-xs text-slate-500 shrink-0">
                 <Filter className="w-3.5 h-3.5 text-brand-600 mr-1" />
-                <span className="font-semibold text-slate-700">Filter by Department:</span>
+                <span className="font-semibold text-slate-700">{t('requirementsView.filterDept', 'Filter by Department:')}</span>
               </div>
 
               <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs">
@@ -370,7 +372,7 @@ export const RequirementsView = ({
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                   >
-                    {cat}
+                    {cat === 'All Categories' ? t('requirementsView.allCategories', 'All Categories') : cat}
                   </button>
                 ))}
               </div>
@@ -390,7 +392,7 @@ export const RequirementsView = ({
 
             {filteredApprovals.length === 0 && (
               <div className="py-12 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200 mt-6">
-                No approvals categorized under "{selectedCategoryFilter}". Select "All Categories" to view all.
+                {t('requirementsView.noApprovalsUnder', `No approvals categorized under "${selectedCategoryFilter}". Select "All Categories" to view all.`, { category: selectedCategoryFilter })}
               </div>
             )}
           </div>
@@ -423,10 +425,10 @@ export const RequirementsView = ({
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-soft space-y-6">
           <div>
             <h3 className="text-xl font-black text-slate-900">
-              Conditional Exemptions & Non-Applicable Approvals
+              {t('requirementsView.exemptionsTitle', 'Conditional Exemptions & Non-Applicable Approvals')}
             </h3>
             <p className="text-xs text-slate-500 mt-1 max-w-3xl">
-              The statutory rules engine evaluated your business parameters against Central & State acts and confirmed the following clearances are not required for your profile.
+              {t('requirementsView.exemptionsDesc', 'The statutory rules engine evaluated your business parameters against Central & State acts and confirmed the following clearances are not required for your profile.')}
             </p>
           </div>
 
@@ -442,7 +444,7 @@ export const RequirementsView = ({
                       {item.category}
                     </span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                      EXEMPTED / NOT APPLICABLE
+                      {t('requirementsView.exemptedNotApplicable', 'EXEMPTED / NOT APPLICABLE')}
                     </span>
                   </div>
 
@@ -454,14 +456,14 @@ export const RequirementsView = ({
                   </div>
 
                   <div className="mt-3 p-3 rounded-xl bg-white border border-slate-200 text-xs text-slate-700 leading-relaxed">
-                    <strong className="text-slate-900">Statutory Reason: </strong>
+                    <strong className="text-slate-900">{t('requirementsView.statutoryReason', 'Statutory Reason:')} </strong>
                     <span>{item.exemptionReason || item.applicability}</span>
                   </div>
                 </div>
 
                 <div className="text-[11px] text-slate-400 pt-2 border-t border-slate-200 flex items-center justify-between">
-                  <span>Governing Statute: {item.officialSource}</span>
-                  <span>Rule Trigger: {item.ruleTrigger || 'Threshold rule'}</span>
+                  <span>{t('requirementsView.governingStatute', 'Governing Statute:')} {item.officialSource}</span>
+                  <span>{t('requirementsView.ruleTrigger', 'Rule Trigger:')} {item.ruleTrigger || t('requirementsView.thresholdRule', 'Threshold rule')}</span>
                 </div>
               </div>
             ))}
@@ -469,7 +471,7 @@ export const RequirementsView = ({
 
           {exemptApprovals.length === 0 && (
             <div className="py-8 text-center text-xs text-slate-500">
-              All master industrial clearances apply to this facility. No conditional exemptions detected.
+              {t('requirementsView.noExemptions', 'All master industrial clearances apply to this facility. No conditional exemptions detected.')}
             </div>
           )}
         </div>
@@ -490,10 +492,10 @@ export const RequirementsView = ({
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-soft space-y-6">
           <div>
             <h3 className="text-xl font-black text-slate-900">
-              Statutory Business & Tax Registrations
+              {t('requirementsView.otherRegsTitle', 'Statutory Business & Tax Registrations')}
             </h3>
             <p className="text-xs text-slate-500 mt-1">
-              General enterprise registrations required alongside specific industrial licenses.
+              {t('requirementsView.otherRegsDesc', 'General enterprise registrations required alongside specific industrial licenses.')}
             </p>
           </div>
 
@@ -523,7 +525,7 @@ export const RequirementsView = ({
                       rel="noopener noreferrer" 
                       className="text-xs font-bold text-brand-700 hover:underline inline-flex items-center space-x-1"
                     >
-                      <span>Official Portal</span>
+                      <span>{t('requirementsView.officialPortal', 'Official Portal')}</span>
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>

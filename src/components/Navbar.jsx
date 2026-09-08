@@ -17,6 +17,8 @@ import {
   UserPlus
 } from 'lucide-react';
 import { clearAuthSession } from '../services/api';
+import { useTranslation } from '../i18n/LanguageContext';
+import { LanguageSelector } from './LanguageSelector';
 
 export const Navbar = ({ 
   currentTab, 
@@ -34,6 +36,23 @@ export const Navbar = ({
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [showDemoDisclaimerModal, setShowDemoDisclaimerModal] = useState(false);
   const userMenuRef = useRef(null);
+
+  const { t } = useTranslation();
+
+  const getLinkLabel = (linkId, fallback) => {
+    switch (linkId) {
+      case 'home': return t('nav.home', fallback);
+      case 'industry-areas': return t('nav.industryAreas', fallback);
+      case 'wizard': return t('nav.requirements', fallback);
+      case 'compliance': return t('nav.compliance', fallback);
+      case 'schemes': return t('nav.schemes', fallback);
+      case 'help': return t('nav.help', fallback);
+      case 'dashboard': return t('nav.dashboard', fallback);
+      case 'my-applications': return t('nav.myApplications', fallback);
+      case 'verification': return t('nav.verifyIdentity', fallback);
+      default: return fallback;
+    }
+  };
 
   // Close user dropdown on outside click
   useEffect(() => {
@@ -118,8 +137,13 @@ export const Navbar = ({
 
           <div className="flex items-center space-x-4 text-slate-300 text-xs">
             <span className="hidden sm:inline text-slate-400 text-[11px]">
-              Assistance & Discovery Tool (Not a government portal)
+              {t('nav.assistanceTool', 'Assistance & Discovery Tool (Not a government portal)')}
             </span>
+            <span className="text-slate-600 hidden sm:inline">|</span>
+
+            {/* Language Selector Topbar */}
+            <LanguageSelector variant="topbar" />
+
             <span className="text-slate-600 hidden sm:inline">|</span>
             
             {/* Demo Mode / Role Switcher */}
@@ -130,7 +154,7 @@ export const Navbar = ({
                 title="Switch view mode for demonstration"
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span>Mode: <strong className="text-amber-300">{activeRole === 'admin' ? 'Admin Console' : activeRole === 'officer' ? 'Demo Officer Desk' : 'Applicant View'}</strong></span>
+                <span>{t('nav.mode', 'Mode')}: <strong className="text-amber-300">{activeRole === 'admin' ? t('nav.adminConsole', 'Admin Console') : activeRole === 'officer' ? t('nav.demoOfficerDesk', 'Demo Officer Desk') : t('nav.applicantView', 'Applicant View')}</strong></span>
                 <ChevronDown className="w-3 h-3" />
               </button>
 
@@ -140,7 +164,7 @@ export const Navbar = ({
                   onMouseLeave={() => setRoleDropdownOpen(false)}
                 >
                   <div className="px-3 py-1 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Demonstration Mode Switcher
+                    {t('nav.demoSwitcher', 'Demonstration Mode Switcher')}
                   </div>
                   <button
                     onClick={() => {
@@ -233,7 +257,7 @@ export const Navbar = ({
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
                 }`}
               >
-                {link.label}
+                {getLinkLabel(link.id, link.label)}
               </button>
             ))}
 
@@ -242,7 +266,7 @@ export const Navbar = ({
                 onClick={() => onNavigate ? onNavigate('/admin') : setCurrentTab('admin')}
                 className="px-3.5 py-2 rounded-xl text-sm font-bold text-brand-800 hover:bg-blue-50"
               >
-                Admin
+                {t('nav.admin', 'Admin')}
               </button>
             )}
             {activeRole === 'officer' && (
@@ -253,13 +277,16 @@ export const Navbar = ({
                 }`}
               >
                 <ShieldCheck className="w-4 h-4 text-amber-600" />
-                <span>Officer Desk</span>
+                <span>{t('nav.officerDesk', 'Officer Desk')}</span>
               </button>
             )}
           </nav>
 
           {/* Right Action: Authenticated vs Unauthenticated */}
           <div className="hidden sm:flex items-center space-x-3">
+            {/* Language Selector Dropdown in Navbar */}
+            <LanguageSelector />
+
             {isLoggedIn ? (
               <>
                 {/* + New Application Button */}
@@ -268,7 +295,7 @@ export const Navbar = ({
                   className="px-3.5 py-2 rounded-xl bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer active:scale-95"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>+ New Application</span>
+                  <span>{t('nav.newApplication', '+ New Application')}</span>
                 </button>
 
                 {/* User Profile Menu with Dropdown */}
@@ -306,7 +333,7 @@ export const Navbar = ({
                         className="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2.5 cursor-pointer"
                       >
                         <User className="w-4 h-4 text-brand-600" />
-                        <span>My Profile</span>
+                        <span>{t('nav.myProfile', 'My Profile')}</span>
                       </button>
 
                       <button
@@ -318,7 +345,7 @@ export const Navbar = ({
                         className="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2.5 cursor-pointer"
                       >
                         <Layers className="w-4 h-4 text-brand-600" />
-                        <span>My Applications</span>
+                        <span>{t('nav.myApplications', 'My Applications')}</span>
                       </button>
 
                       <button
@@ -330,7 +357,7 @@ export const Navbar = ({
                         className="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2.5 cursor-pointer"
                       >
                         <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                        <span>Identity Verification</span>
+                        <span>{t('nav.verifyIdentity', 'Identity Verification')}</span>
                       </button>
 
                       <button
@@ -341,7 +368,7 @@ export const Navbar = ({
                         className="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center space-x-2.5 cursor-pointer"
                       >
                         <Settings className="w-4 h-4 text-slate-500" />
-                        <span>Account Settings</span>
+                        <span>{t('nav.accountSettings', 'Account Settings')}</span>
                       </button>
 
                       <div className="my-1 border-t border-slate-100"></div>
@@ -351,7 +378,7 @@ export const Navbar = ({
                         className="w-full text-left px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center space-x-2.5 cursor-pointer"
                       >
                         <LogOut className="w-4 h-4 text-red-500" />
-                        <span>Log Out</span>
+                        <span>{t('nav.logOut', 'Log Out')}</span>
                       </button>
                     </div>
                   )}
@@ -365,7 +392,7 @@ export const Navbar = ({
                   className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-brand-700 hover:bg-slate-100 transition-all cursor-pointer flex items-center space-x-1.5"
                 >
                   <LogIn className="w-3.5 h-3.5" />
-                  <span>Log In</span>
+                  <span>{t('nav.logIn', 'Log In')}</span>
                 </button>
 
                 <button
@@ -373,7 +400,7 @@ export const Navbar = ({
                   className="px-4 py-2 rounded-xl bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold shadow-xs transition-all active:scale-95 cursor-pointer flex items-center space-x-1.5"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
-                  <span>Register</span>
+                  <span>{t('nav.register', 'Register')}</span>
                 </button>
               </>
             )}
@@ -395,6 +422,9 @@ export const Navbar = ({
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-white border-b border-slate-200 px-4 pt-2 pb-6 space-y-2 shadow-lg animate-fadeIn">
+          {/* Mobile Language Selector */}
+          <LanguageSelector variant="mobile" />
+
           {navLinks.map((link) => (
             <button
               key={link.id}
@@ -405,7 +435,7 @@ export const Navbar = ({
                   : 'text-slate-700 hover:bg-slate-50'
               }`}
             >
-              {link.label}
+              {getLinkLabel(link.id, link.label)}
             </button>
           ))}
 
@@ -420,14 +450,14 @@ export const Navbar = ({
                 className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center space-x-2"
               >
                 <User className="w-4 h-4 text-brand-600" />
-                <span>My Profile ({currentUser?.name})</span>
+                <span>{t('nav.myProfile', 'My Profile')} ({currentUser?.name})</span>
               </button>
               <button
                 onClick={handleLogoutAction}
                 className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-bold text-red-600 hover:bg-red-50 flex items-center space-x-2"
               >
                 <LogOut className="w-4 h-4 text-red-500" />
-                <span>Log Out</span>
+                <span>{t('nav.logOut', 'Log Out')}</span>
               </button>
             </div>
           ) : (
@@ -440,7 +470,7 @@ export const Navbar = ({
                 }}
                 className="py-2.5 text-center rounded-xl border border-slate-300 text-xs font-bold text-slate-700"
               >
-                Log In
+                {t('nav.logIn', 'Log In')}
               </button>
               <button
                 onClick={() => {
@@ -450,7 +480,7 @@ export const Navbar = ({
                 }}
                 className="py-2.5 text-center rounded-xl bg-brand-700 text-xs font-bold text-white"
               >
-                Register
+                {t('nav.register', 'Register')}
               </button>
             </div>
           )}

@@ -15,12 +15,14 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { applicationApi } from '../services/api';
+import { useTranslation } from '../i18n/LanguageContext';
 
 export const MyApplicationsPage = ({ 
   currentUser, 
   onNavigate, 
   onStartNewApplication 
 }) => {
+  const { t } = useTranslation();
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'in_progress', 'submitted', 'completed'
@@ -67,10 +69,10 @@ export const MyApplicationsPage = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
-            My Applications
+            {t('myApps.title', 'My Applications')}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Manage your industrial establishment approvals, document submissions, and statutory milestones
+            {t('myApps.subtitle', 'Manage your industrial establishment approvals, document submissions, and statutory milestones')}
           </p>
         </div>
 
@@ -80,7 +82,7 @@ export const MyApplicationsPage = ({
             className="px-4 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white text-xs sm:text-sm font-bold shadow-md shadow-brand-700/20 active:scale-95 transition-all flex items-center space-x-1.5 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>+ New Application</span>
+            <span>{t('myApps.newApp', '+ New Application')}</span>
           </button>
         </div>
       </div>
@@ -88,10 +90,10 @@ export const MyApplicationsPage = ({
       {/* Filter Tabs */}
       <div className="flex items-center space-x-2 border-b border-slate-200 pb-3 overflow-x-auto">
         {[
-          { id: 'all', label: 'All Applications', count: totalCount },
-          { id: 'in_progress', label: 'In Progress', count: inProgressCount, badgeClass: 'bg-amber-100 text-amber-800' },
-          { id: 'submitted', label: 'Submitted', count: submittedCount, badgeClass: 'bg-blue-100 text-blue-800' },
-          { id: 'completed', label: 'Completed', count: completedCount, badgeClass: 'bg-emerald-100 text-emerald-800' }
+          { id: 'all', label: t('myApps.all', 'All Applications'), count: totalCount },
+          { id: 'in_progress', label: t('myApps.inProgress', 'In Progress'), count: inProgressCount, badgeClass: 'bg-amber-100 text-amber-800' },
+          { id: 'submitted', label: t('myApps.submitted', 'Submitted'), count: submittedCount, badgeClass: 'bg-blue-100 text-blue-800' },
+          { id: 'completed', label: t('myApps.completed', 'Completed'), count: completedCount, badgeClass: 'bg-emerald-100 text-emerald-800' }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -118,7 +120,7 @@ export const MyApplicationsPage = ({
       {loading ? (
         <div className="p-16 text-center bg-white rounded-3xl border border-slate-200">
           <RefreshCw className="w-8 h-8 text-brand-600 animate-spin mx-auto mb-3" />
-          <p className="text-xs font-medium text-slate-500">Loading your applications securely from database...</p>
+          <p className="text-xs font-medium text-slate-500">{t('myApps.loading', 'Loading your applications securely from database...')}</p>
         </div>
       ) : filteredApplications.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -130,11 +132,25 @@ export const MyApplicationsPage = ({
             const approvedDocsCount = (app.documents || []).filter(d => d.status === 'APPROVED').length;
             const isInProgress = app.status === 'In Progress';
 
-            // Determine stage description
-            let currentStage = 'Approvals Identified';
-            if (app.status === 'Completed') currentStage = 'Approved & Granted';
-            else if (app.status === 'Submitted') currentStage = 'Under Scrutiny';
-            else if (approvedDocsCount < docsCount) currentStage = 'Documents Required';
+            // Determine localized stage description
+            let currentStageKey = 'stageApprovals';
+            let defaultStage = 'Approvals Identified';
+            if (app.status === 'Completed') {
+              currentStageKey = 'stageApproved';
+              defaultStage = 'Approved & Granted';
+            } else if (app.status === 'Submitted') {
+              currentStageKey = 'stageScrutiny';
+              defaultStage = 'Under Scrutiny';
+            } else if (approvedDocsCount < docsCount) {
+              currentStageKey = 'stageDocsRequired';
+              defaultStage = 'Documents Required';
+            }
+
+            const statusLabel = app.status === 'Completed'
+              ? t('common.completed', 'Completed')
+              : app.status === 'Submitted'
+              ? t('common.submitted', 'Submitted')
+              : t('common.inProgress', 'In Progress');
 
             return (
               <div
@@ -152,7 +168,7 @@ export const MyApplicationsPage = ({
                         {app.applicantName || 'Industrial Project'}
                       </h2>
                       <p className="text-xs font-semibold text-brand-700">
-                        {app.industry}
+                        {t('industries.' + app.industry, app.industry)}
                       </p>
                     </div>
                     <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded-md uppercase tracking-wider ${
@@ -162,7 +178,7 @@ export const MyApplicationsPage = ({
                         ? 'bg-blue-100 text-blue-800 border border-blue-200'
                         : 'bg-amber-100 text-amber-800 border border-amber-200'
                     }`}>
-                      {app.status}
+                      {statusLabel}
                     </span>
                   </div>
 
@@ -170,12 +186,12 @@ export const MyApplicationsPage = ({
                   <div className="space-y-1 text-xs">
                     <div className="flex items-center text-slate-600">
                       <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400 shrink-0" />
-                      <span>{app.district}, {app.state}</span>
+                      <span>{app.district}, {t('states.' + app.state, app.state)}</span>
                     </div>
                     <div className="flex items-center space-x-1.5 text-slate-500 pt-1">
-                      <span className="font-semibold text-slate-700">Current Stage:</span>
+                      <span className="font-semibold text-slate-700">{t('myApps.currentStage', 'Current Stage:')}</span>
                       <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-800 font-medium text-[11px]">
-                        {currentStage}
+                        {t('myApps.' + currentStageKey, defaultStage)}
                       </span>
                     </div>
                   </div>
@@ -183,7 +199,7 @@ export const MyApplicationsPage = ({
                   {/* Progress Bar */}
                   <div className="space-y-1.5 pt-2">
                     <div className="flex justify-between text-xs font-semibold">
-                      <span className="text-slate-500">Progress</span>
+                      <span className="text-slate-500">{t('myApps.progress', 'Progress')}</span>
                       <span className="text-brand-700 font-bold">{progress}%</span>
                     </div>
                     <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
@@ -201,12 +217,16 @@ export const MyApplicationsPage = ({
                   {/* Approvals & Documents Count Stats */}
                   <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-[11px]">
                     <div className="p-2 rounded-lg bg-slate-50 border border-slate-100">
-                      <div className="text-slate-400 font-medium">Clearances</div>
-                      <div className="text-slate-800 font-black mt-0.5">{approvalsCount} required</div>
+                      <div className="text-slate-400 font-medium">{t('myApps.clearances', 'Clearances')}</div>
+                      <div className="text-slate-800 font-black mt-0.5">
+                        {t('myApps.clearancesCount', '{count} required', { count: approvalsCount })}
+                      </div>
                     </div>
                     <div className="p-2 rounded-lg bg-slate-50 border border-slate-100">
-                      <div className="text-slate-400 font-medium">Documents</div>
-                      <div className="text-slate-800 font-black mt-0.5">{approvedDocsCount}/{docsCount} approved</div>
+                      <div className="text-slate-400 font-medium">{t('common.documents', 'Documents')}</div>
+                      <div className="text-slate-800 font-black mt-0.5">
+                        {t('myApps.docsCount', '{approved}/{total} approved', { approved: approvedDocsCount, total: docsCount })}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -214,7 +234,7 @@ export const MyApplicationsPage = ({
                 {/* Footer and Buttons */}
                 <div className="pt-3 border-t border-slate-100 space-y-2">
                   <div className="text-[10px] text-slate-400 flex justify-between">
-                    <span>Last modified:</span>
+                    <span>{t('myApps.lastModified', 'Last modified:')}</span>
                     <span>{new Date(app.updatedAt || app.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                   </div>
 
@@ -223,14 +243,14 @@ export const MyApplicationsPage = ({
                       onClick={() => onNavigate(`/application/${encodeURIComponent(appId)}`)}
                       className="flex-1 py-2 px-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all text-center cursor-pointer"
                     >
-                      View Application
+                      {t('myApps.viewApplication', 'View Application')}
                     </button>
                     {isInProgress && (
                       <button
                         onClick={() => onNavigate(`/application/${encodeURIComponent(appId)}/approvals`)}
                         className="flex-1 py-2 px-3 rounded-xl bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold transition-all text-center flex items-center justify-center space-x-1 cursor-pointer"
                       >
-                        <span>Continue</span>
+                        <span>{t('myApps.continue', 'Continue')}</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -249,12 +269,12 @@ export const MyApplicationsPage = ({
           </div>
           <div>
             <h2 className="text-base font-bold text-slate-800">
-              No applications match this filter
+              {t('myApps.noMatchTitle', 'No applications match this filter')}
             </h2>
             <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
               {activeFilter === 'all'
-                ? 'You have not created any applications yet. Create one now to discover statutory clearance sequences.'
-                : `There are currently no applications marked as "${activeFilter.replace('_', ' ')}".`}
+                ? t('myApps.noMatchAll', 'You have not created any applications yet. Create one now to discover statutory clearance sequences.')
+                : t('myApps.noMatchFiltered', 'There are currently no applications marked as "{filter}".', { filter: activeFilter.replace('_', ' ') })}
             </p>
           </div>
           <button
@@ -262,7 +282,7 @@ export const MyApplicationsPage = ({
             className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Create New Application</span>
+            <span>{t('myApps.createApplication', 'Create New Application')}</span>
           </button>
         </div>
       )}

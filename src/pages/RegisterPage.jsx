@@ -13,11 +13,13 @@ import {
   ShieldCheck 
 } from 'lucide-react';
 import { authApi, setAuthSession } from '../services/api';
+import { useTranslation } from '../i18n/LanguageContext';
 
 export const RegisterPage = ({ 
   onRegisterSuccess, 
   onNavigate 
 }) => {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
@@ -108,7 +110,7 @@ export const RegisterPage = ({
             className="inline-flex items-center text-xs font-semibold text-slate-500 hover:text-brand-700 transition-colors cursor-pointer group"
           >
             <ArrowLeft className="w-3.5 h-3.5 mr-1.5 transition-transform group-hover:-translate-x-1" />
-            Back to Home
+            {t('auth.backToHome', 'Back to Home')}
           </button>
         </div>
 
@@ -118,10 +120,10 @@ export const RegisterPage = ({
             <Building2 className="w-7 h-7 text-white" />
           </div>
           <h2 className="text-3xl font-black tracking-tight text-slate-900">
-            Create your <span className="text-brand-700">UdyamOne</span> Account
+            {t('auth.registerTitle', 'Create your UdyamOne Account')}
           </h2>
           <p className="mt-2 text-sm text-slate-600">
-            Single-window industrial approval workspace for your business
+            {t('auth.registerSubtitle', 'Single-window industrial approval workspace for your business')}
           </p>
         </div>
 
@@ -141,7 +143,7 @@ export const RegisterPage = ({
             {/* Full Name */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Full Name / Business Legal Representative <span className="text-red-500">*</span>
+                {t('auth.fullName', 'Full Name / Business Legal Representative')} <span className="text-red-500">*</span>
               </label>
               <div className="relative rounded-xl shadow-2xs">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -161,7 +163,7 @@ export const RegisterPage = ({
             {/* Email Address */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Email Address <span className="text-red-500">*</span>
+                {t('auth.email', 'Email Address')} <span className="text-red-500">*</span>
               </label>
               <div className="relative rounded-xl shadow-2xs">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -181,7 +183,7 @@ export const RegisterPage = ({
             {/* Mobile Number */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Mobile Number (10 digits) <span className="text-red-500">*</span>
+                {t('auth.mobile', 'Mobile Number (10 digits)')} <span className="text-red-500">*</span>
               </label>
               <div className="relative rounded-xl shadow-2xs">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -202,7 +204,7 @@ export const RegisterPage = ({
             {/* Password */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Password (min. 6 characters) <span className="text-red-500">*</span>
+                {t('auth.password', 'Password (min. 6 characters)')} <span className="text-red-500">*</span>
               </label>
               <div className="relative rounded-xl shadow-2xs">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -229,7 +231,7 @@ export const RegisterPage = ({
             {/* Confirm Password */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Confirm Password <span className="text-red-500">*</span>
+                {t('auth.confirmPassword', 'Confirm Password')} <span className="text-red-500">*</span>
               </label>
               <div className="relative rounded-xl shadow-2xs">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -256,10 +258,10 @@ export const RegisterPage = ({
                 {loading ? (
                   <span className="flex items-center space-x-2">
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                    <span>Creating Account...</span>
+                    <span>{t('auth.registering', 'Creating account...')}</span>
                   </span>
                 ) : (
-                  <span>Create Account</span>
+                  <span>{t('auth.registerBtn', 'Register Enterprise')}</span>
                 )}
               </button>
             </div>
@@ -269,13 +271,13 @@ export const RegisterPage = ({
           {/* Links */}
           <div className="mt-6 pt-6 border-t border-slate-100 text-center text-xs text-slate-600 space-y-2">
             <p>
-              Already have an account?{' '}
+              {t('auth.alreadyHaveAccount', 'Already have an account?')}{' '}
               <button
                 type="button"
                 onClick={() => onNavigate && onNavigate('/login')}
                 className="font-bold text-brand-700 hover:text-brand-800 underline underline-offset-2 cursor-pointer"
               >
-                Log In
+                {t('auth.logInBtn', 'Log In')}
               </button>
             </p>
           </div>

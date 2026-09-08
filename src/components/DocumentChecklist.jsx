@@ -23,6 +23,7 @@ import {
   filterDocuments, 
   extractDocumentsFromResponse 
 } from '../services/documentChecklistHelper';
+import { useTranslation } from '../i18n/LanguageContext';
 
 const formatDisplayFileSize = (fileSize) => {
   if (!fileSize) return '';
@@ -49,6 +50,7 @@ export const DocumentChecklist = ({
   applicationId = null,
   userId = null
 }) => {
+  const { t } = useTranslation();
   const [docsList, setDocsList] = useState(Array.isArray(documents) ? documents : []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -336,13 +338,13 @@ export const DocumentChecklist = ({
           <div>
             <div className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-blue-50 text-brand-800 text-xs font-bold mb-1.5">
               <FileCheck className="w-3.5 h-3.5 text-brand-600" />
-              <span>Document Requirements & Approval System</span>
+              <span>{t('documents.systemBadge', 'Document Requirements & Approval System')}</span>
             </div>
             <h3 className="text-2xl font-black text-slate-900 tracking-tight">
-              Statutory Document Approval
+              {t('documents.title', 'Statutory Document Approval')}
             </h3>
             <p className="text-slate-600 text-xs sm:text-sm mt-1">
-              Documents are <span className="font-bold text-emerald-700">APPROVED</span> only when a matching record exists in the database. Otherwise marked <span className="font-bold text-rose-700">REJECTED</span>.
+              {t('documents.subtitle', 'Checklist of mandatory dossiers, certificates, and ownership proofs required for approvals.')}
             </p>
           </div>
 
@@ -352,7 +354,7 @@ export const DocumentChecklist = ({
               className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 transition-colors flex items-center space-x-1.5 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 text-slate-500" />
-              <span>Download Checklist</span>
+              <span>{t('documents.downloadChecklist', 'Download Checklist')}</span>
             </button>
           </div>
         </div>
@@ -360,14 +362,14 @@ export const DocumentChecklist = ({
         {/* Dynamic Summary Cards */}
         <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Total Requirements</span>
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">{t('documents.totalRequirements', 'Total Requirements')}</span>
             <span className="text-xl sm:text-2xl font-black text-slate-900 mt-1 block">{totalCount}</span>
           </div>
 
           <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200">
             <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block flex items-center space-x-1">
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Approved (In DB)</span>
+              <span>{t('documents.approvedInDb', 'Approved (In DB)')}</span>
             </span>
             <span className="text-xl sm:text-2xl font-black text-emerald-900 mt-1 block">{approvedCount}</span>
           </div>
@@ -375,13 +377,13 @@ export const DocumentChecklist = ({
           <div className="p-4 rounded-2xl bg-rose-50/70 border border-rose-200">
             <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider block flex items-center space-x-1">
               <ShieldAlert className="w-3.5 h-3.5" />
-              <span>Rejected (No DB)</span>
+              <span>{t('documents.rejectedNoDb', 'Rejected (No DB)')}</span>
             </span>
             <span className="text-xl sm:text-2xl font-black text-rose-900 mt-1 block">{rejectedCount}</span>
           </div>
 
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Not Uploaded</span>
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">{t('documents.filterNotUploaded', 'Not Uploaded')}</span>
             <span className="text-xl sm:text-2xl font-black text-slate-700 mt-1 block">{notUploadedCount}</span>
           </div>
         </div>
@@ -391,14 +393,14 @@ export const DocumentChecklist = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
             <div className="flex items-center space-x-2">
               <span className="text-xs font-extrabold text-slate-900">
-                Approval Progress: {approvedCount} of {totalCount} verified against database
+                {t('documents.approvalProgress', 'Approval Progress: {approved} of {total} verified against database', { approved: approvedCount, total: totalCount })}
               </span>
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                {percentageApproved}% Approved
+                {percentageApproved}% {t('documents.approved', 'Approved')}
               </span>
             </div>
             <span className="text-[11px] text-slate-500 font-medium">
-              Allowed formats: PDF, JPG, JPEG, PNG
+              {t('documents.allowedFormats', 'Allowed formats: PDF, JPG, JPEG, PNG')}
             </span>
           </div>
 
@@ -412,9 +414,9 @@ export const DocumentChecklist = ({
           <div className="mt-2.5 flex items-center justify-between text-[11px] text-slate-500">
             <span className="flex items-center space-x-1">
               <AlertCircle className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span>Database Validation: Record exists → APPROVED • No record → REJECTED</span>
+              <span>{t('documents.dbValidationNotice', 'Database Validation: Record exists → APPROVED • No record → REJECTED')}</span>
             </span>
-            <span className="text-slate-400">Statutory verification active</span>
+            <span className="text-slate-400">{t('documents.verificationActive', 'Statutory verification active')}</span>
           </div>
         </div>
 
@@ -428,7 +430,7 @@ export const DocumentChecklist = ({
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
-            All Requirements ({totalCount})
+            {t('documents.filterAll', 'All Requirements')} ({totalCount})
           </button>
           <button
             onClick={() => setActiveFilter('approved')}
@@ -438,7 +440,7 @@ export const DocumentChecklist = ({
                 : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
             }`}
           >
-            Approved ({approvedCount})
+            {t('documents.filterApproved', 'Approved')} ({approvedCount})
           </button>
           <button
             onClick={() => setActiveFilter('rejected')}
@@ -448,7 +450,7 @@ export const DocumentChecklist = ({
                 : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
             }`}
           >
-            Rejected ({rejectedCount})
+            {t('documents.filterRejected', 'Rejected')} ({rejectedCount})
           </button>
           <button
             onClick={() => setActiveFilter('not_uploaded')}
@@ -458,7 +460,7 @@ export const DocumentChecklist = ({
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
-            Not Uploaded ({notUploadedCount})
+            {t('documents.filterNotUploaded', 'Not Uploaded')} ({notUploadedCount})
           </button>
         </div>
 
@@ -592,13 +594,13 @@ export const DocumentChecklist = ({
 
                       {/* Category */}
                       <div className="text-xs text-slate-500 pl-7">
-                        <span className="font-semibold text-slate-700">Category: </span>
+                        <span className="font-semibold text-slate-700">{t('documents.category', 'Category')}: </span>
                         {doc.category || 'General Identification'}
                       </div>
 
                       {/* Why required */}
                       <div className="text-xs text-slate-600 leading-relaxed pl-7 pt-1">
-                        <span className="font-semibold text-slate-800">Why required: </span>
+                        <span className="font-semibold text-slate-800">{t('documents.whyRequired', 'Why required')}: </span>
                         {doc.whyRequired}
                       </div>
 
@@ -622,8 +624,8 @@ export const DocumentChecklist = ({
                             <Database className="w-3 h-3 text-slate-400" />
                             <span>
                               {isApproved && (doc.verified || doc.databaseRecordExists)
-                                ? 'Record verified in database' 
-                                : 'No matching database record'}
+                                ? t('documents.dbVerified', 'Record verified in database')
+                                : t('documents.dbUnmatched', 'No matching database record')}
                             </span>
                           </div>
                         </div>
@@ -635,12 +637,18 @@ export const DocumentChecklist = ({
                       {/* Current status badge */}
                       <div>
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block sm:inline mr-2">
-                          Status:
+                          {t('documents.status', 'Status')}:
                         </span>
                         <span className={`text-[10px] px-2.5 py-1 rounded-md border tracking-wider uppercase inline-flex items-center space-x-1 ${getStatusBadgeStyle(doc.status)}`}>
                           {isApproved && <Check className="w-3 h-3 mr-0.5" />}
                           {isRejected && <X className="w-3 h-3 mr-0.5" />}
-                          <span>{doc.status}</span>
+                          <span>
+                            {doc.status === 'APPROVED' || doc.status === 'VERIFIED'
+                              ? t('documents.approved', 'APPROVED')
+                              : doc.status === 'REJECTED'
+                                ? t('documents.rejected', 'REJECTED')
+                                : t('documents.notUploaded', 'NOT UPLOADED')}
+                          </span>
                         </span>
                       </div>
 
@@ -655,7 +663,7 @@ export const DocumentChecklist = ({
                             className="px-4 py-2 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-bold text-xs shadow-xs transition-all flex items-center space-x-1.5 cursor-pointer active:scale-95"
                           >
                             <Upload className="w-3.5 h-3.5" />
-                            <span>Upload Document</span>
+                            <span>{t('documents.uploadFile', 'Upload Document')}</span>
                           </button>
                         ) : (
                           <div className="flex items-center space-x-2 justify-end">
@@ -666,7 +674,7 @@ export const DocumentChecklist = ({
                               title="Replace this uploaded document with another file"
                             >
                               <RefreshCw className="w-3 h-3 text-slate-500" />
-                              <span>Replace</span>
+                              <span>{t('documents.replace', 'Replace')}</span>
                             </button>
 
                             {/* Delete button */}
@@ -676,7 +684,7 @@ export const DocumentChecklist = ({
                               title="Delete this document and reset status"
                             >
                               <Trash2 className="w-3 h-3" />
-                              <span>Delete</span>
+                              <span>{t('common.delete', 'Delete')}</span>
                             </button>
                           </div>
                         )}
