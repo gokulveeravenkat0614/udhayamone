@@ -495,7 +495,12 @@
     "starterQ3": "What is GST?",
     "starterQ4": "Explain pollution categories",
     "starterQ5": "Which government schemes can help me?",
-    "starterQ6": "What should I do first?"
+    "starterQ6": "What should I do first?",
+    "sessionExpired": "Your session has expired. Please log in again.",
+    "serviceBusy": "AI service is busy right now. Please try again shortly.",
+    "networkError": "Unable to connect to UdyamOne AI. Please check your connection.",
+    "configError": "AI service configuration needs administrator attention.",
+    "emptyMessage": "Please enter a question or message."
   },
   "footer": {
     "tagline": "\"One Platform. Every Approval. Every Compliance. Every Opportunity.\"",

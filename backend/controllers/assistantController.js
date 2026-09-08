@@ -1,26 +1,142 @@
 const OpenAI = require('openai');
 const mongoose = require('mongoose');
+const axios = require('axios');
 const User = require('../models/User');
 const Verification = require('../models/Verification');
 const ChatMessage = require('../models/ChatMessage');
 const IndustryAreaEligibility = require('../models/IndustryAreaEligibility');
 const { SEED_INDUSTRY_AREAS } = require('../data/seedIndustryAreas');
 
-const getOpenAIClient = () => {
-  if (!process.env.OPENAI_API_KEY) {
-    return null;
-  }
-  try {
-    return new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY.trim(),
-      timeout: 25000,
-      maxRetries: 2
-    });
-  } catch (err) {
-    console.error('[AI Provider] Failed to initialize OpenAI client:', err.message);
-    return null;
-  }
+// Track provider-specific quota/rate-limit cooldowns (5-minute cooldown)
+const providerCooldowns = {
+  openai: 0,
+  gemini: 0,
+  groq: 0
 };
+
+function getAvailableProviders() {
+  const list = [];
+  if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim()) {
+    list.push({ id: 'openai', name: 'OpenAI' });
+  }
+  if ((process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim()) ||
+      (process.env.GOOGLE_AI_API_KEY && process.env.GOOGLE_AI_API_KEY.trim())) {
+    list.push({ id: 'gemini', name: 'Google Gemini' });
+  }
+  if (process.env.GROQ_API_KEY && process.env.GROQ_API_KEY.trim()) {
+    list.push({ id: 'groq', name: 'Groq' });
+  }
+  return list;
+}
+
+async function callOpenAI(messages, modelName) {
+  const apiKey = (process.env.OPENAI_API_KEY || '').trim();
+  if (!apiKey) throw new Error('OPENAI_API_KEY is not configured');
+
+  const baseURL = process.env.OPENAI_BASE_URL ? process.env.OPENAI_BASE_URL.trim() : undefined;
+  const client = new OpenAI({
+    apiKey,
+    baseURL,
+    timeout: 25000,
+    maxRetries: 1
+  });
+
+  const configuredModel = modelName || process.env.OPENAI_MODEL || 'gpt-4o-mini';
+  const modelsToTry = [configuredModel];
+  if (configuredModel !== 'gpt-3.5-turbo') modelsToTry.push('gpt-3.5-turbo');
+  if (configuredModel !== 'gpt-4o') modelsToTry.push('gpt-4o');
+
+  let lastErr = null;
+  for (const m of modelsToTry) {
+    try {
+      const completion = await client.chat.completions.create({
+        model: m,
+        messages,
+        max_tokens: 1000
+      });
+      const text = (completion.choices?.[0]?.message?.content || '').trim();
+      if (text) return text;
+    } catch (err) {
+      lastErr = err;
+      const msg = (err.message || '').toLowerCase();
+      // If error is account quota exceeded or authentication failure, fallback models won't help
+      if (err.status === 401 || err.code === 'insufficient_quota' || msg.includes('quota') || msg.includes('api key') || msg.includes('billing')) {
+        throw err;
+      }
+      console.warn(`[AI Provider] OpenAI model ${m} attempt failed, trying fallback:`, err.message);
+    }
+  }
+  if (lastErr) throw lastErr;
+  return '';
+}
+
+async function callGemini(systemPrompt, history, userMessage) {
+  const apiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || '').trim();
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
+
+  const model = (process.env.GEMINI_MODEL || 'gemini-1.5-flash').trim();
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  const contents = [];
+  for (const h of history) {
+    if (h && h.content) {
+      contents.push({
+        role: h.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: String(h.content) }]
+      });
+    }
+  }
+  contents.push({
+    role: 'user',
+    parts: [{ text: userMessage }]
+  });
+
+  const body = {
+    system_instruction: {
+      parts: [{ text: systemPrompt }]
+    },
+    contents,
+    generationConfig: {
+      maxOutputTokens: 1000,
+      temperature: 0.7
+    }
+  };
+
+  const response = await axios.post(url, body, {
+    headers: { 'Content-Type': 'application/json' },
+    timeout: 25000
+  });
+
+  const candidates = response.data?.candidates;
+  if (!candidates || candidates.length === 0) {
+    throw new Error('Gemini returned an empty candidate list');
+  }
+
+  const parts = candidates[0]?.content?.parts;
+  const text = parts?.map(p => p.text).join('') || '';
+  return text.trim();
+}
+
+async function callGroq(messages, modelName) {
+  const apiKey = (process.env.GROQ_API_KEY || '').trim();
+  if (!apiKey) throw new Error('GROQ_API_KEY is not configured');
+
+  const model = modelName || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  const client = new OpenAI({
+    apiKey,
+    baseURL: 'https://api.groq.com/openai/v1',
+    timeout: 25000,
+    maxRetries: 1
+  });
+
+  const completion = await client.chat.completions.create({
+    model,
+    messages,
+    max_tokens: 1000
+  });
+
+  return (completion.choices?.[0]?.message?.content || '').trim();
+}
 
 const SYSTEM_PROMPT = `
 You are UdyamOne AI, an intelligent, helpful, and versatile AI assistant designed for Indian entrepreneurs, MSMEs, startups, and website visitors.
@@ -218,24 +334,23 @@ async function getPersonalContext(userId) {
   };
 }
 
-let isQuotaExhausted = false;
-
 function health(req, res) {
-  const hasKey = Boolean(process.env.OPENAI_API_KEY);
-  const isAvailable = hasKey && !isQuotaExhausted;
+  const providers = getAvailableProviders();
+  const configured = providers.length > 0;
+  const now = Date.now();
+  const reachable = configured && providers.some(p => (providerCooldowns[p.id] || 0) < now);
   return res.json({
     success: true,
-    aiConfigured: isAvailable,
-    providerReachable: isAvailable
+    aiConfigured: configured,
+    providerReachable: reachable
   });
 }
 
 function config(req, res) {
-  const hasKey = Boolean(process.env.OPENAI_API_KEY);
-  const isAvailable = hasKey && !isQuotaExhausted;
+  const configured = getAvailableProviders().length > 0;
   return res.json({
     success: true,
-    aiConfigured: isAvailable
+    aiConfigured: configured
   });
 }
 
@@ -252,22 +367,13 @@ async function chat(req, res) {
       return res.status(400).json({ success: false, message: 'Message is too long. Keep it under 2000 characters.' });
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('[AI Provider] AI_PROVIDER_CONFIGURATION_MISSING: OPENAI_API_KEY is not set in environment.');
+    const providers = getAvailableProviders();
+    if (providers.length === 0) {
+      console.error('[AI Provider] AI_PROVIDER_CONFIGURATION_MISSING: No AI credentials configured in environment.');
       return res.status(503).json({
         success: false,
         code: 'AI_PROVIDER_CONFIGURATION_MISSING',
-        message: 'AI assistant is temporarily unavailable. Please try again later.'
-      });
-    }
-
-    const client = getOpenAIClient();
-    if (!client) {
-      console.error('[AI Provider] AI_PROVIDER_CONFIGURATION_MISSING: Failed to initialize OpenAI client.');
-      return res.status(503).json({
-        success: false,
-        code: 'AI_PROVIDER_CONFIGURATION_MISSING',
-        message: 'AI assistant is temporarily unavailable. Please try again later.'
+        message: 'AI service configuration needs administrator attention.'
       });
     }
 
@@ -293,58 +399,118 @@ Personalized MongoDB context for the signed-in user (null for guest visitors):
 ${JSON.stringify(personalContext, null, 2)}
 `;
 
-    let reply = '';
-    const configuredModel = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-    const modelsToTry = [configuredModel];
-    if (configuredModel !== 'gpt-3.5-turbo') modelsToTry.push('gpt-3.5-turbo');
-    if (configuredModel !== 'gpt-4o') modelsToTry.push('gpt-4o');
+    const systemPromptWithContext = `${SYSTEM_PROMPT}${languageInstruction}\n\n${contextMessage}`;
+    const standardMessages = [
+      { role: 'system', content: systemPromptWithContext },
+      ...history,
+      { role: 'user', content: message }
+    ];
 
-    // Race OpenAI call against a 25-second server timeout to prevent hanging connections
-    const aiCall = async () => {
-      let lastErr = null;
-      for (const m of modelsToTry) {
-        try {
-          if (client.chat && client.chat.completions) {
-            const completion = await client.chat.completions.create({
-              model: m,
-              messages: [
-                { role: 'system', content: `${SYSTEM_PROMPT}${languageInstruction}\n\n${contextMessage}` },
-                ...history,
-                { role: 'user', content: message }
-              ],
-              max_tokens: 1000
-            });
-            const text = (completion.choices?.[0]?.message?.content || '').trim();
-            if (text) return text;
-          }
-        } catch (err) {
-          lastErr = err;
-          const msg = (err.message || '').toLowerCase();
-          // If error is account quota exceeded or authentication failure, fallback models won't help
-          if (err.status === 401 || err.code === 'insufficient_quota' || msg.includes('quota') || msg.includes('api key')) {
-            throw err;
-          }
-          console.warn(`[AI Provider] Model ${m} attempt failed, trying fallback:`, err.message);
-        }
-      }
-      if (lastErr) throw lastErr;
-      return '';
-    };
-
-    const timeoutPromise = new Promise((_, reject) => {
-      const timer = setTimeout(() => {
-        const err = new Error('AI provider request timed out after 25s');
-        err.name = 'TimeoutError';
-        err.code = 'ETIMEDOUT';
-        reject(err);
-      }, 25000);
-      if (timer.unref) timer.unref();
+    // Order providers: providers not currently in cooldown first
+    const now = Date.now();
+    const sortedProviders = [...providers].sort((a, b) => {
+      const aCooldown = (providerCooldowns[a.id] || 0) > now ? 1 : 0;
+      const bCooldown = (providerCooldowns[b.id] || 0) > now ? 1 : 0;
+      return aCooldown - bCooldown;
     });
 
-    reply = await Promise.race([aiCall(), timeoutPromise]);
+    let reply = '';
+    let lastError = null;
+    const errorsEncountered = [];
 
-    if (!reply) {
-      throw new Error('The AI returned an empty response');
+    for (const provider of sortedProviders) {
+      try {
+        console.log(`[AI Provider] Attempting request with provider: ${provider.name}`);
+        if (provider.id === 'openai') {
+          reply = await callOpenAI(standardMessages);
+        } else if (provider.id === 'gemini') {
+          reply = await callGemini(systemPromptWithContext, history, message);
+        } else if (provider.id === 'groq') {
+          reply = await callGroq(standardMessages);
+        }
+
+        if (reply && reply.trim()) {
+          // Clear cooldown on success
+          providerCooldowns[provider.id] = 0;
+          console.log(`[AI Provider] Success with provider: ${provider.name}`);
+          break;
+        }
+      } catch (err) {
+        lastError = err;
+        errorsEncountered.push({ provider: provider.name, error: err });
+        const errMsg = (err.message || String(err)).toLowerCase();
+        const errStatus = err.status || err.statusCode || err.response?.status;
+        const errCode = err.code || err.error?.code || err.response?.data?.error?.code || '';
+        const isQuota = (
+          errStatus === 429 ||
+          errCode === 'insufficient_quota' ||
+          errCode === 'credit_balance_exhausted' ||
+          errMsg.includes('quota') ||
+          errMsg.includes('credits') ||
+          errMsg.includes('billing') ||
+          errMsg.includes('rate_limit')
+        );
+
+        if (isQuota) {
+          providerCooldowns[provider.id] = Date.now() + 5 * 60 * 1000;
+          console.warn(`[AI Provider] ${provider.name} quota exceeded or rate limited. Will try next provider if available.`);
+        } else {
+          console.warn(`[AI Provider] ${provider.name} failed:`, err.message);
+        }
+      }
+    }
+
+    if (!reply || !reply.trim()) {
+      const hasAuthFail = errorsEncountered.some(e => {
+        const s = e.error.status || e.error.statusCode || e.error.response?.status;
+        const m = (e.error.message || '').toLowerCase();
+        return s === 401 || m.includes('api key') || m.includes('unauthorized');
+      });
+      const hasQuota = errorsEncountered.some(e => {
+        const s = e.error.status || e.error.statusCode || e.error.response?.status;
+        const c = e.error.code || e.error.error?.code || '';
+        const m = (e.error.message || '').toLowerCase();
+        return s === 429 || c === 'insufficient_quota' || m.includes('quota') || m.includes('billing');
+      });
+      const hasTimeout = errorsEncountered.some(e => {
+        const c = e.error.code;
+        const m = (e.error.message || '').toLowerCase();
+        return c === 'ETIMEDOUT' || e.error.name === 'TimeoutError' || m.includes('timeout');
+      });
+
+      if (hasAuthFail && !hasQuota) {
+        console.error('[AI Provider] AI_PROVIDER_AUTH_FAILED: Authentication with AI provider failed.');
+        return res.status(503).json({
+          success: false,
+          code: 'AI_PROVIDER_AUTH_FAILED',
+          message: 'AI service is temporarily unavailable.'
+        });
+      }
+
+      if (hasQuota) {
+        console.error('[AI Provider] AI_PROVIDER_QUOTA_EXCEEDED: AI provider quota exceeded or rate limited.');
+        return res.status(429).json({
+          success: false,
+          code: 'AI_PROVIDER_QUOTA_EXCEEDED',
+          message: 'AI service is busy right now. Please try again shortly.'
+        });
+      }
+
+      if (hasTimeout) {
+        console.error('[AI Provider] AI_PROVIDER_TIMEOUT: Request to AI provider timed out.');
+        return res.status(504).json({
+          success: false,
+          code: 'AI_PROVIDER_TIMEOUT',
+          message: 'AI service request timed out. Please try again.'
+        });
+      }
+
+      console.error('[AI Provider] AI_PROVIDER_REQUEST_FAILED: All AI providers failed.', lastError?.message);
+      return res.status(500).json({
+        success: false,
+        code: 'AI_PROVIDER_REQUEST_FAILED',
+        message: 'AI service is temporarily unavailable.'
+      });
     }
 
     if (mongoose.connection.readyState === 1) {
@@ -370,61 +536,11 @@ ${JSON.stringify(personalContext, null, 2)}
       personalized: Boolean(req.user?.id)
     });
   } catch (error) {
-    const errorStatus = error.status || error.statusCode || 500;
-    const errorMessage = error.message || String(error);
-    const errorCode = error.code || error.error?.code || null;
-    const errorType = error.type || error.error?.type || null;
-    const isQuota = (
-      errorCode === 'insufficient_quota' ||
-      errorCode === 'credit_balance_exhausted' ||
-      errorType === 'insufficient_quota' ||
-      errorMessage.toLowerCase().includes('quota') ||
-      errorMessage.toLowerCase().includes('credits') ||
-      errorMessage.toLowerCase().includes('billing')
-    );
-
-    if (errorStatus === 401 || errorMessage.includes('401') || errorMessage.toLowerCase().includes('api key')) {
-      console.error('[AI Provider] AI_PROVIDER_AUTH_FAILED: Authentication with OpenAI failed. Check OPENAI_API_KEY validity.', errorMessage);
-      return res.status(503).json({
-        success: false,
-        code: 'AI_PROVIDER_AUTH_FAILED',
-        message: 'AI service is temporarily unavailable.'
-      });
-    }
-
-    if (isQuota) {
-      isQuotaExhausted = true;
-      console.error('[AI Provider] AI_PROVIDER_QUOTA_EXCEEDED: OpenAI credit balance exhausted or quota reached.', errorMessage);
-      return res.status(429).json({
-        success: false,
-        code: 'AI_PROVIDER_QUOTA_EXCEEDED',
-        message: 'AI service is temporarily unavailable.'
-      });
-    }
-
-    if (errorStatus === 429 || errorMessage.includes('429') || errorCode === 'rate_limit_exceeded') {
-      console.error('[AI Provider] AI_PROVIDER_REQUEST_FAILED: Rate limit reached with OpenAI provider.', errorMessage);
-      return res.status(429).json({
-        success: false,
-        code: 'AI_PROVIDER_RATE_LIMITED',
-        message: 'AI service rate limit reached. Please try again shortly.'
-      });
-    }
-
-    if (error.code === 'ETIMEDOUT' || error.name === 'TimeoutError' || errorMessage.toLowerCase().includes('timeout')) {
-      console.error('[AI Provider] AI_PROVIDER_REQUEST_FAILED: Request to OpenAI timed out.', errorMessage);
-      return res.status(504).json({
-        success: false,
-        code: 'AI_PROVIDER_TIMEOUT',
-        message: 'AI service request timed out. Please try again.'
-      });
-    }
-
-    console.error('[AI Provider] AI_PROVIDER_REQUEST_FAILED: OpenAI request failed.', errorMessage);
+    console.error('[AI Provider] Unexpected chat controller error:', error);
     return res.status(500).json({
       success: false,
       code: 'AI_PROVIDER_REQUEST_FAILED',
-      message: 'AI service encountered an internal error.'
+      message: 'AI service is temporarily unavailable.'
     });
   }
 }

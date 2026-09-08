@@ -189,7 +189,8 @@ export function AIAssistant({
     assistantApi.health()
       .then(res => {
         if (!cancelled && res && typeof res.aiConfigured === 'boolean') {
-          setAiConfigured(res.aiConfigured);
+          const isReady = res.aiConfigured && res.providerReachable !== false;
+          setAiConfigured(isReady);
         }
       })
       .catch(() => {
@@ -199,7 +200,9 @@ export function AIAssistant({
               setAiConfigured(cfg.aiConfigured);
             }
           })
-          .catch(() => {});
+          .catch(() => {
+            if (!cancelled) setAiConfigured(false);
+          });
       });
 
     return () => { cancelled = true; };
@@ -232,7 +235,11 @@ export function AIAssistant({
 
   async function sendMessage(messageOverride = null, isRetry = false) {
     const message = String(messageOverride ?? input).trim();
-    if (!message || loading || isSendingRef.current) return;
+    if (!message) {
+      setError(t('ai.emptyMessage', 'Please enter a question or message.'));
+      return;
+    }
+    if (loading || isSendingRef.current) return;
     isSendingRef.current = true;
 
     // Safe debugging logs per MVP specification (never logs secret keys)
@@ -271,6 +278,7 @@ export function AIAssistant({
           { role: 'assistant', content: data.reply }
         ]);
         setAiConfigured(true);
+        setError('');
       } else {
         throw new Error('AI returned an empty response');
       }
@@ -280,24 +288,17 @@ export function AIAssistant({
       const status = err.status || err.statusCode || err.response?.status;
       const code = err.response?.data?.code || err.data?.code;
 
-      if (status === 401 || status === 403) {
-        setError(t('auth.invalidCredentials', 'Please sign in again.'));
-      } else if (status === 404) {
-        setError(t('ai.serviceUnavailable', 'AI service endpoint is unavailable.'));
-      } else if (status === 429) {
-        if (code === 'AI_PROVIDER_QUOTA_EXCEEDED') {
-          setAiConfigured(false);
-          setError(t('ai.serviceUnavailable', 'AI service is temporarily unavailable.'));
-        } else {
-          setError(t('ai.serviceUnavailable', 'AI service is busy. Please try again shortly.'));
-        }
-      } else if (status === 502 || status === 503 || code === 'AI_PROVIDER_CONFIGURATION_MISSING' || code === 'AI_NOT_CONFIGURED') {
+      if (status === 401) {
+        setError(t('ai.sessionExpired', 'Your session has expired. Please log in again.'));
+      } else if (code === 'AI_PROVIDER_CONFIGURATION_MISSING' || code === 'AI_NOT_CONFIGURED') {
         setAiConfigured(false);
-        setError(t('ai.serviceUnavailable', 'AI service is temporarily unavailable.'));
-      } else if (status === 500) {
+        setError(t('ai.configError', 'AI service configuration needs administrator attention.'));
+      } else if (status === 429 || code === 'AI_PROVIDER_QUOTA_EXCEEDED' || code === 'AI_PROVIDER_RATE_LIMITED') {
+        setError(t('ai.serviceBusy', 'AI service is busy right now. Please try again shortly.'));
+      } else if (status === 500 || status === 502 || status === 503) {
         setError(t('ai.serviceUnavailable', 'AI service is temporarily unavailable.'));
       } else if (err.name === 'NetworkError' || status === 0 || (typeof navigator !== 'undefined' && !navigator.onLine) || String(err.message || '').toLowerCase().includes('network') || String(err.message || '').toLowerCase().includes('failed to fetch')) {
-        setError(t('ai.serviceUnavailable', 'Unable to connect to application service.'));
+        setError(t('ai.networkError', 'Unable to connect to UdyamOne AI. Please check your connection.'));
       } else {
         setError(t('ai.serviceUnavailable', 'AI service is temporarily unavailable.'));
       }
